@@ -23,7 +23,7 @@ st.set_page_config(layout="centered")
 # Create the connection object using the configuration from secrets.toml
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-datasheet = conn.read(worksheet="prediakcia")
+datasheet = conn.read(worksheet="predikcia")
 st.dataframe(datasheet)
 
 st.title('Predikcia časových radov vybraných valutových kurzov')
