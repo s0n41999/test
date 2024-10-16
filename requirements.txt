@@ -3,6 +3,6 @@ pandas
 scikit_learn
 yfinance
 st-gsheets-connection
-streamlit==1.22
+streamlit
 git+https://github.com/streamlit/gsheets-connection
 
