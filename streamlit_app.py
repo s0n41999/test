@@ -19,10 +19,7 @@ st.set_page_config(layout="centered")
 #------------------------------------------
 
 
-conn = st.connection("gsheets", type=GSheetsConnection, url="https://docs.google.com/spreadsheets/d/1SQeQOJaBt3zCkaeralI0KToWgPwxPRK8NZi9pbNoySI")
-
-df = conn.read()
-st.write(df)
+st.write(st.secrets)
 
 
 st.title('Predikcia časových radov vybraných valutových kurzov')
