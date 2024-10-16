@@ -19,7 +19,15 @@ st.set_page_config(layout="centered")
 #------------------------------------------
 
 
-st.write(st.secrets)
+
+# Create the connection object using the configuration from secrets.toml
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+# Read the data from the specified spreadsheet
+df = conn.read()
+
+# Display the data
+st.write(df)
 
 
 st.title('Predikcia časových radov vybraných valutových kurzov')
