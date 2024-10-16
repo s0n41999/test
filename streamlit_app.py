@@ -71,6 +71,27 @@ def dataframe():
     st.dataframe(data.tail(10))
 
 
+# Funkcia na pridanie predikcie do Google Sheets
+def nacitat_do_google_sheets(predikcie, data_predicted, model_name):
+    try:
+        # Načítanie existujúcich údajov
+        existing_data = conn.read(spreadsheet_id=st.secrets["connections"]["gsheets"]["spreadsheet"], worksheet_name=sheet_name)
+        
+        # Pridanie predikcií do tabuľky
+        for index, row in data_predicted.iterrows():
+            date_time = row['Deň']
+            prediction = row['Predikcia']
+            existing_data = existing_data.append({
+                'Deň': str(date_time),
+                'Predikcia': prediction,
+                'Model': model_name
+            }, ignore_index=True)
+
+        # Zapísať dáta naspäť do Google Sheets
+        conn.write(existing_data, spreadsheet_id=st.secrets["connections"]["gsheets"]["spreadsheet"], worksheet_name=sheet_name)
+        st.success(f"Predikcie úspešne nahrané do sheetu {sheet_name}")
+    except Exception as e:
+        st.error(f"Nepodarilo sa nahrať predikcie: {e}")
 
 def predikcia():
     model = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
@@ -125,6 +146,9 @@ def vykonat_model(model, pocet_dni):
     rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
     st.text(f'RMSE: {rmse} \
             \nMAE: {mean_absolute_error(y_testovanie, predikcia)}')
+    
+    if st.button('Načítať do Google Sheets'):
+        nacitat_do_google_sheets('predikcie', data_predicted, model_name)  # Zapíšeme do "predikcie"
 
 
 if __name__ == '__main__':
