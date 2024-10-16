@@ -10,13 +10,22 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error  
+from sklearn.metrics import mean_absolute_error 
+import boto3
+from io import StringIO
 #-----------------NASTAVENIA-----------------
 
 st.set_page_config(layout="centered")
 
 
 #------------------------------------------
+
+s3 = boto3.client('s3', 
+                  aws_access_key_id='AKIAYSE4NYKCIYUMSTIU', 
+                  aws_secret_access_key='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', 
+                  region_name='eu-north-1')
+bucket_name = 'streamlitbucket'
+
 
 st.title('Predikcia časových radov vybraných valutových kurzov')
 
@@ -69,7 +78,20 @@ def dataframe():
     st.header('Nedávne dáta')
     st.dataframe(data.tail(10))
 
+def ulozit_csv_na_s3(predikovane_data, file_name):
+    csv_buffer = StringIO()
+    predikovane_data.to_csv(csv_buffer, index=False)
+    s3.put_object(Bucket=bucket_name, Key=file_name, Body=csv_buffer.getvalue())
+    st.success(f'Súbor {file_name} bol úspešne uložený do S3.')
 
+def zobrazit_zoznam_csv():
+    response = s3.list_objects_v2(Bucket=bucket_name)
+    if 'Contents' in response:
+        for obj in response['Contents']:
+            file_url = f"https://{bucket_name}.s3.amazonaws.com/{obj['Key']}"
+            st.markdown(f"[{obj['Key']}]({file_url})")
+    else:
+        st.write("Žiadne súbory neboli nájdené.")
 
 def predikcia():
     model = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
@@ -120,6 +142,11 @@ def vykonat_model(model, pocet_dni):
     with col2:
          data_predicted = pd.DataFrame(predikovane_data)
          st.dataframe(data_predicted)
+
+    file_name = f"predikcia_{moznost}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
+    ulozit_csv_na_s3(data_predicted, file_name)
+
+    st.dataframe(data_predicted)
     
     rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
     st.text(f'RMSE: {rmse} \
@@ -128,3 +155,5 @@ def vykonat_model(model, pocet_dni):
 
 if __name__ == '__main__':
     main()
+    st.header("Uložené CSV súbory")
+    zobrazit_zoznam_csv()
