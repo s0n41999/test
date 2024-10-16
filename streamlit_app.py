@@ -20,11 +20,17 @@ st.set_page_config(layout="centered")
 
 
 
-# Manually specify the spreadsheet URL for testing
+# Manually configure the Google Sheets connection
+class CustomGSheetsConnection(GSheetsConnection):
+    def __init__(self, spreadsheet_url):
+        self.spreadsheet_url = spreadsheet_url
+        super().__init__()
+
+# Manually specify the spreadsheet URL
 SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID"
 
-# Create a Google Sheets connection using the hardcoded URL
-conn = GSheetsConnection(spreadsheet=SPREADSHEET_URL)
+# Create a custom connection object with the manually set URL
+conn = CustomGSheetsConnection(SPREADSHEET_URL)
 
 # Try reading the specific worksheet
 try:
