@@ -9,13 +9,15 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error  
+from sklearn.metrics import mean_absolute_error
+from streamlit_gsheets import GSheetsConnection
 #-----------------NASTAVENIA-----------------
 
 st.set_page_config(layout="centered")
 
 
 #------------------------------------------
+conn = st.experimental_connection("gsheets", type=GShhetsConnection)
 
 st.title('Predikcia časových radov vybraných valutových kurzov')
 
