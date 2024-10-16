@@ -1,4 +1,3 @@
-from st_files_connection import FilesConnection
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -10,9 +9,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error 
-import boto3
-from io import BytesIO, StringIO
+from sklearn.metrics import mean_absolute_error  
+from st_files_connection import FilesConnection
+import io
 #-----------------NASTAVENIA-----------------
 
 st.set_page_config(layout="centered")
@@ -20,12 +19,8 @@ st.set_page_config(layout="centered")
 
 #------------------------------------------
 
-s3 = boto3.client('s3', 
-                  aws_access_key_id='AKIAYSE4NYKCIYUMSTIU', 
-                  aws_secret_access_key='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', 
-                  region_name='eu-north-1')
-bucket_name = 'streamlitbucket'
-
+# Nastavenia pre pripojenie k S3 pomocou st_files_connection
+conn = st.connection('s3', type=FilesConnection)
 
 st.title('Predikcia časových radov vybraných valutových kurzov')
 
@@ -78,26 +73,8 @@ def dataframe():
     st.header('Nedávne dáta')
     st.dataframe(data.tail(10))
 
-# Uloženie predikcie do CSV na S3
-def ulozit_csv_na_s3(predikovane_data, file_name):
-    csv_buffer = StringIO()
-    predikovane_data.to_csv(csv_buffer, index=False)
-    s3.put_object(Bucket=bucket_name, Key=file_name, Body=csv_buffer.getvalue())
-    st.success(f'Súbor {file_name} bol úspešne uložený do S3.')
 
-# Zobrazenie uložených CSV súborov na S3
-def zobrazit_zoznam_csv():
-    try:
-        response = s3.list_objects_v2(Bucket=bucket_name)
-        if 'Contents' in response:
-            for obj in response['Contents']:
-                file_url = f"https://{bucket_name}.s3.amazonaws.com/{obj['Key']}"
-                st.markdown(f"[{obj['Key']}]({file_url})")
-        else:
-            st.write("Žiadne súbory neboli nájdené.")
-    except Exception as e:
-        st.error(f"Chyba pri načítaní zoznamu súborov z S3: {e}")
-  
+
 def predikcia():
     model = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
     pocet_dni = st.number_input('Koľko dní chcete predpovedať?', value=5)
@@ -148,42 +125,30 @@ def vykonat_model(model, pocet_dni):
          data_predicted = pd.DataFrame(predikovane_data)
          st.dataframe(data_predicted)
 
-# Uloženie CSV na S3
-    file_name = f"predikcia_{moznost}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
-    ulozit_csv_na_s3(data_predicted, file_name)
-    
-  
-# Zobrazenie výsledku
-    st.dataframe(data_predicted)
+   # Uloženie predikovaných dát ako CSV a nahranie do S3
+    filename = f"predikcia_{moznost}_{dnes}.csv"
+    csv_buffer = io.StringIO()
+    data_predicted.to_csv(csv_buffer, index=False)
 
+  # Nahranie do S3
+    conn.write(filename, csv_buffer.getvalue())
+    st.success(f'Súbor {filename} bol úspešne nahratý do S3.')
     
     rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
     st.text(f'RMSE: {rmse} \
             \nMAE: {mean_absolute_error(y_testovanie, predikcia)}')
+  
+ zobrazit_subory_s3()
 
-# Funkcia pre nahranie súboru na S3 pomocou file_uploader
-def upload_subor_na_s3():
-    uploaded_file = st.file_uploader("Vyberte súbor na nahratie", type=["csv"])
-    
-    if uploaded_file is not None:
-        # Konvertovanie nahraného súboru na BytesIO objekt
-        file_object = BytesIO(uploaded_file.getvalue())
-        
-        # Definovať meno súboru na S3
-        s3_file_name = f"uploaded_{uploaded_file.name}"
-        
-        # Nahrať súbor na S3 pomocou upload_fileobj
-        try:
-            s3.upload_fileobj(file_object, bucket_name, s3_file_name)
-            st.success(f'Súbor {s3_file_name} bol úspešne nahratý na S3.')
-        except Exception as e:
-            st.error(f'Chyba pri nahrávaní súboru: {e}')
+def zobrazit_subory_s3():
+    st.header('Dostupné súbory v S3:')
+    files = conn.list_files()
+
+    if files:
+        for file in files:
+            st.markdown(f"[{file}]({conn.get_url(file)})")
+    else:
+        st.text("Žiadne súbory nie sú k dispozícii.")
 
 if __name__ == '__main__':
     main()
-    
-    st.header("Nahrať nový CSV súbor")
-    upload_subor_na_s3()  # Funkcia na nahrávanie CSV súboru na S3
-    
-    st.header("Uložené CSV súbory")
-    zobrazit_zoznam_csv()  # Funkcia na zobrazenie uložených CSV súborov
