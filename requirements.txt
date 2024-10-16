@@ -1,6 +1,8 @@
 numpy
 pandas
 scikit_learn
-streamlit
 yfinance
 st-gsheets-connection
+streamlit==1.22
+git+https://github.com/streamlit/gsheets-connection
+
