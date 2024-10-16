@@ -1,8 +1,5 @@
-s3fs
-st-files-connection
-streamlit
 numpy
 pandas
 scikit_learn
+streamlit
 yfinance
-boto3
