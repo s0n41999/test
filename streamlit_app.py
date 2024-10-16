@@ -10,17 +10,12 @@ from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error  
-from st_files_connection import FilesConnection
-import io
 #-----------------NASTAVENIA-----------------
 
 st.set_page_config(layout="centered")
 
 
 #------------------------------------------
-
-# Nastavenia pre pripojenie k S3 pomocou st_files_connection
-conn = st.connection('s3', type=FilesConnection)
 
 st.title('Predikcia časových radov vybraných valutových kurzov')
 
@@ -124,31 +119,11 @@ def vykonat_model(model, pocet_dni):
     with col2:
          data_predicted = pd.DataFrame(predikovane_data)
          st.dataframe(data_predicted)
-
-   # Uloženie predikovaných dát ako CSV a nahranie do S3
-    filename = f"predikcia_{moznost}_{dnes}.csv"
-    csv_buffer = io.StringIO()
-    data_predicted.to_csv(csv_buffer, index=False)
-
-  # Nahranie do S3
-    conn.write(filename, csv_buffer.getvalue())
-    st.success(f'Súbor {filename} bol úspešne nahratý do S3.')
     
     rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
     st.text(f'RMSE: {rmse} \
             \nMAE: {mean_absolute_error(y_testovanie, predikcia)}')
-  
-    zobrazit_subory_s3()
 
-def zobrazit_subory_s3():
-    st.header('Dostupné súbory v S3:')
-    files = conn.list_files()
-
-    if files:
-        for file in files:
-            st.markdown(f"[{file}]({conn.get_url(file)})")
-    else:
-        st.text("Žiadne súbory nie sú k dispozícii.")
 
 if __name__ == '__main__':
     main()
