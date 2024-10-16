@@ -17,7 +17,7 @@ st.set_page_config(layout="centered")
 
 
 #------------------------------------------
-conn = st.experimental_connection("gsheets", type=GShetsConnection)
+conn = st.experimental_connection("gsheets", type=GSheetsConnection)
 
 st.title('Predikcia časových radov vybraných valutových kurzov')
 
