@@ -1,5 +1,2 @@
-pandas
-boto3
-io
-streamlit
-datetime
+s3fs==x.x.x
+st-files-connection
