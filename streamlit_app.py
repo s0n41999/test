@@ -138,7 +138,7 @@ def vykonat_model(model, pocet_dni):
     st.text(f'RMSE: {rmse} \
             \nMAE: {mean_absolute_error(y_testovanie, predikcia)}')
   
-     zobrazit_subory_s3()
+    zobrazit_subory_s3()
 
 def zobrazit_subory_s3():
     st.header('Dostupné súbory v S3:')
