@@ -85,13 +85,16 @@ def ulozit_csv_na_s3(predikovane_data, file_name):
     st.success(f'Súbor {file_name} bol úspešne uložený do S3.')
 
 def zobrazit_zoznam_csv():
-    response = s3.list_objects_v2(Bucket=bucket_name)
-    if 'Contents' in response:
-        for obj in response['Contents']:
-            file_url = f"https://{bucket_name}.s3.amazonaws.com/{obj['Key']}"
-            st.markdown(f"[{obj['Key']}]({file_url})")
-    else:
-        st.write("Žiadne súbory neboli nájdené.")
+    try:
+        response = s3.list_objects_v2(Bucket=bucket_name)
+        if 'Contents' in response:
+            for obj in response['Contents']:
+                file_url = f"https://{bucket_name}.s3.amazonaws.com/{obj['Key']}"
+                st.markdown(f"[{obj['Key']}]({file_url})")
+        else:
+            st.write("Žiadne súbory neboli nájdené.")
+    except Exception as e:
+        st.error(f"Chyba pri načítaní zoznamu súborov z S3: {e}")
 
 def predikcia():
     model = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
