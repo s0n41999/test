@@ -20,11 +20,18 @@ st.set_page_config(layout="centered")
 
 
 
-# Create the connection object using the configuration from secrets.toml
-conn = st.connection("gsheets", type=GSheetsConnection)
+# Manually specify the spreadsheet URL for testing
+SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID"
 
-datasheet = conn.read(worksheet="predikcia")
-st.dataframe(datasheet)
+# Create a Google Sheets connection using the hardcoded URL
+conn = GSheetsConnection(spreadsheet=SPREADSHEET_URL)
+
+# Try reading the specific worksheet
+try:
+    datasheet = conn.read(worksheet="predikcia")  # Ensure the worksheet name exists
+    st.dataframe(datasheet)
+except ValueError as e:
+    st.error(f"Error: {e}")
 
 st.title('Predikcia časových radov vybraných valutových kurzov')
 
