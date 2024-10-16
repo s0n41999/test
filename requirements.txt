@@ -1,2 +1,3 @@
-s3fs==x.x.x
+s3fs
 st-files-connection
+streamlit
