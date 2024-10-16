@@ -17,7 +17,19 @@ st.set_page_config(layout="centered")
 
 
 #------------------------------------------
+# Pripojenie ku Google Sheets
 conn = st.experimental_connection("gsheets", type=GSheetsConnection)
+
+# Čítanie údajov zo špecifikovaného sheetu
+data = conn.read(spreadsheet_id=st.secrets["connections"]["gsheets"]["spreadsheet"], worksheet_name="predikcie")
+
+# Zobrazenie načítaných údajov
+st.write(data)
+
+
+
+
+
 
 st.title('Predikcia časových radov vybraných valutových kurzov')
 
