@@ -1,27 +1,19 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import yfinance as yf
 import datetime
 from datetime import date
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
 from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error
-from streamlit_gsheets import GSheetsConnection
-#-----------------NASTAVENIA-----------------
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 #-----------------NASTAVENIA-----------------
 st.set_page_config(layout="centered")
 
-#------------------------------------------
-conn = st.connection("gsheets", type=GSheetsConnection)
-# Try reading the specific worksheet
-try:
-    datasheet = conn.read(worksheet="predikcia")  # Ensure the worksheet name exists
-    st.dataframe(datasheet)
-except ValueError as e:
-    st.error(f"Error: {e}")
 st.title('Predikcia časových radov vybraných valutových kurzov')
 
 def main():
@@ -29,6 +21,9 @@ def main():
 
 def stiahnut_data(user_input, start_date, end_date):
     df = yf.download(user_input, start=start_date, end=end_date, progress=False)
+    # Flatten columns if necessary (handle multi-index case)
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = ['_'.join(col).strip() for col in df.columns.values]
     return df
 
 # Možnosti výberu menového tikera
@@ -40,7 +35,11 @@ start_date = start
 end_date = dnes
 
 data = stiahnut_data(moznost, start_date, end_date)
-scaler = StandardScaler()
+
+# Ensure the 'Close' column is accessible even if multi-indexed
+close_column = [col for col in data.columns if 'Close' in col]
+if close_column:
+    data['Close'] = data[close_column[0]]
 
 st.write('Záverečný kurz')
 st.line_chart(data.Close)
@@ -48,36 +47,28 @@ st.header('Nedávne Dáta')
 st.dataframe(data.tail(20))
 
 # Výpočet kĺzavých priemerov
-def pridaj_indikatory(df):
-    df['50ma'] = df['Close'].rolling(50).mean()
-    df['200ma'] = df['Close'].rolling(200).mean()
-    df['stddev'] = df['Close'].rolling(window=20).std()  # volatilita
-    df['momentum'] = df['Close'].diff(4)  # 4-denný momentum
-    df['RSI'] = 100 - (100 / (1 + df['Close'].pct_change().rolling(14).mean()))  # RSI indikátor
-    return df
-
 st.header('Jednoduchý kĺzavý priemer za 50 dní')
-datama50=data 
+datama50 = data.copy()
 datama50['50ma'] = datama50['Close'].rolling(50).mean()
 st.line_chart(datama50[['50ma', 'Close']])
+
 st.header('Jednoduchý kĺzavý priemer za 200 dní')
-datama200=data 
+datama200 = data.copy()
 datama200['200ma'] = datama200['Close'].rolling(200).mean()
 st.line_chart(datama200[['200ma', 'Close']])
-spojene_data = pd.merge(datama200[['200ma', 'Close']], datama50[['50ma']], left_index=True, right_index=True)
-data = pridaj_indikatory(data)
+
+# Merging 50ma and 200ma data for combined chart
+spojene_data = pd.concat([datama200[['200ma', 'Close']], datama50[['50ma']]], axis=1)
 
 st.header('Jednoduchý kĺzavý priemer za 50 dní a 200 dní')
 st.line_chart(spojene_data)
+
 def dataframe():
     st.header('Nedávne dáta')
     st.dataframe(data.tail(10))
-st.line_chart(data[['50ma', '200ma', 'Close']])
 
 # Pre spracovanie modelov
 scaler = StandardScaler()
-
-# Výber modelu a predikcia
 def predikcia():
     model = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
     pocet_dni = st.number_input('Koľko dní chcete predpovedať?', value=5)
@@ -159,8 +150,6 @@ def vykonat_model(model, pocet_dni):
     st.text(f'RMSE: {rmse} \
             \nMAE: {mean_absolute_error(y_testovanie, predikcia)}')
     
-        data_predicted = pd.DataFrame(predikovane_data)
-        st.dataframe(data_predicted)
 
     # RMSE a MAE hodnoty
     st.text(f'RMSE: {np.sqrt(mean_squared_error(y, model.predict(X)))}')
