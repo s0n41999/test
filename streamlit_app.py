@@ -97,12 +97,13 @@ def vykonat_model(model, pocet_dni, model_name):
     x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
     y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
 
-    # Expanded Grid Search parameters for Random Forest and KNN
+    # Updated Grid Search parameters for Random Forest
     if model_name == 'Regresor náhodného lesa':
         param_grid = {
-            'n_estimators': [100, 200, 300, 400, 500],
-            'max_depth': [10, 20, 30, 40, 50],
-            'min_samples_split': [2, 5, 10]
+            'n_estimators': [50, 100, 200],
+            'max_depth': [None, 10, 20, 30],
+            'min_samples_split': [2, 5, 10],
+            'min_samples_leaf': [1, 2, 4]
         }
         grid_search = GridSearchCV(model, param_grid, cv=3, scoring='neg_mean_squared_error')
         grid_search.fit(x_trenovanie, y_trenovanie)
@@ -142,6 +143,10 @@ def vykonat_model(model, pocet_dni, model_name):
         den += 1
     data_predicted = pd.DataFrame(predikovane_data)
     st.dataframe(data_predicted)
+
+if __name__ == '__main__':
+    main()
+
 
 if __name__ == '__main__':
     main()
