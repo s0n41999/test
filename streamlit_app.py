@@ -5,14 +5,18 @@ import yfinance as yf
 import datetime
 from datetime import date
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
+from sklearn.model_selection import TimeSeriesSplit
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.model_selection import GridSearchCV
 
 #-----------------NASTAVENIA-----------------
+
 st.set_page_config(layout="centered")
+
+#------------------------------------------
 
 st.title('Predikcia časových radov vybraných valutových kurzov')
 
@@ -26,7 +30,6 @@ def stiahnut_data(user_input, start_date, end_date):
         df.columns = ['_'.join(col).strip() for col in df.columns.values]
     return df
 
-# Možnosti výberu menového tikera
 moznost = st.selectbox('Zadajte menový tiker', ['EURUSD=X','JPY=X', 'GBPUSD=X'])
 moznost = moznost.upper()
 dnes = datetime.date.today()
@@ -35,13 +38,16 @@ start_date = start
 end_date = dnes
 
 data = stiahnut_data(moznost, start_date, end_date)
+scaler = StandardScaler()
 
+# Ensure the 'Close' column is accessible even if multi-indexed
 close_column = [col for col in data.columns if 'Close' in col]
 if close_column:
     data['Close'] = data[close_column[0]]
 
+# Plotting the data
 st.write('Záverečný kurz')
-st.line_chart(data.Close)
+st.line_chart(data['Close'])
 st.header('Nedávne Dáta')
 st.dataframe(data.tail(20))
 
@@ -61,72 +67,82 @@ spojene_data = pd.concat([datama200[['200ma', 'Close']], datama50[['50ma']]], ax
 
 st.header('Jednoduchý kĺzavý priemer za 50 dní a 200 dní')
 st.line_chart(spojene_data)
-# Pre spracovanie modelov
-scaler = StandardScaler()
 
-# Výber modelu a predikcia
 def predikcia():
-    model = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
+    model_option = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
     pocet_dni = st.number_input('Koľko dní chcete predpovedať?', value=5)
     pocet_dni = int(pocet_dni)
     if st.button('Predikovať'):
-        if model == 'Lineárna Regresia':
+        if model_option == 'Lineárna Regresia':
             algoritmus = LinearRegression()
-        elif model == 'Regresor náhodného lesa':
-            algoritmus = RandomForestRegressor(n_estimators=100)
-        elif model == 'Regresor K najbližších susedov':
-            algoritmus = KNeighborsRegressor(n_neighbors=5)
+            vykonat_model(algoritmus, pocet_dni, model_option)
+        elif model_option == 'Regresor náhodného lesa':
+            algoritmus = RandomForestRegressor(random_state=42)
+            vykonat_model(algoritmus, pocet_dni, model_option)
+        elif model_option == 'Regresor K najbližších susedov':
+            algoritmus = KNeighborsRegressor()
+            vykonat_model(algoritmus, pocet_dni, model_option)
 
-        vykonat_model(algoritmus, pocet_dni)
-
-# Optimalizovaný model s TimeSeriesSplit a GridSearchCV
-def vykonat_model(model, pocet_dni): 
-    df = data.dropna()
+def vykonat_model(model, pocet_dni, model_name): 
+    df = data[['Close']].copy()
     df['predikcia'] = df['Close'].shift(-pocet_dni)
-    X = df.drop(['predikcia'], axis=1).values
-    X = scaler.fit_transform(X)
-    X_predikcia = X[-pocet_dni:]
-    X = X[:-pocet_dni]
+    df.dropna(inplace=True)
+    x = df[['Close']].values
     y = df['predikcia'].values
-    y = y[:-pocet_dni]
 
-    # Používame TimeSeriesSplit namiesto náhodného rozdelenia dát
-    tscv = TimeSeriesSplit(n_splits=5)
-    
-    # Optimalizácia hyperparametrov (napr. v prípade KNN alebo RandomForest)
-    if isinstance(model, KNeighborsRegressor):
-        param_grid = {'n_neighbors': range(2, 10)}
-        grid_search = GridSearchCV(model, param_grid, cv=tscv)
-        grid_search.fit(X, y)
+    # Scale the features
+    x = scaler.fit_transform(x)
+
+    # Split data chronologically
+    train_size = int(len(x) * 0.8)
+    x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
+    y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
+
+    # Hyperparameter tuning for Random Forest and KNN
+    if model_name == 'Regresor náhodného lesa':
+        param_grid = {
+            'n_estimators': [50, 100, 200],
+            'max_depth': [None, 5, 10],
+            'min_samples_split': [2, 5, 10]
+        }
+        grid_search = GridSearchCV(model, param_grid, cv=3, scoring='neg_mean_squared_error')
+        grid_search.fit(x_trenovanie, y_trenovanie)
         model = grid_search.best_estimator_
-    elif isinstance(model, RandomForestRegressor):
-        param_grid = {'n_estimators': [50, 100, 200]}
-        grid_search = GridSearchCV(model, param_grid, cv=tscv)
-        grid_search.fit(X, y)
+        st.write(f'Najlepšie hyperparametre: {grid_search.best_params_}')
+    elif model_name == 'Regresor K najbližších susedov':
+        param_grid = {
+            'n_neighbors': [3, 5, 7],
+            'weights': ['uniform', 'distance']
+        }
+        grid_search = GridSearchCV(model, param_grid, cv=3, scoring='neg_mean_squared_error')
+        grid_search.fit(x_trenovanie, y_trenovanie)
         model = grid_search.best_estimator_
+        st.write(f'Najlepšie hyperparametre: {grid_search.best_params_}')
 
-    # Trénovanie modelu s TimeSeriesSplit
-    model.fit(X, y)
-    predikcia_forecast = model.predict(X_predikcia)
+    # Train the model
+    model.fit(x_trenovanie, y_trenovanie)
 
-    predikovane_data = []
+    # Prediction on test set
+    predikcia = model.predict(x_testovanie)
+
+    # Evaluate the model
+    rmse = np.sqrt(mean_squared_error(y_testovanie, predikcia))
+    mae = mean_absolute_error(y_testovanie, predikcia)
+    st.text(f'RMSE: {rmse}\nMAE: {mae}')
+
+    # Predikcia na ďalšie dni
+    posledne_hodnoty = x[-pocet_dni:]
+    predikcia_forecast = model.predict(posledne_hodnoty)
+
+    # Zobrazenie predikcií
     den = 1
-    col1, col2 = st.columns(2)
-
-    with col1:
-        for i in predikcia_forecast:
-            aktualny_datum = dnes + datetime.timedelta(days=den)
-            st.text(f'Deň {den}: {i}')
-            predikovane_data.append({'Deň': aktualny_datum, 'Predikcia': i})
-            den += 1
-
-    with col2:
-        data_predicted = pd.DataFrame(predikovane_data)
-        st.dataframe(data_predicted)
-
-    # RMSE a MAE hodnoty
-    st.text(f'RMSE: {np.sqrt(mean_squared_error(y, model.predict(X)))}')
-    st.text(f'MAE: {mean_absolute_error(y, model.predict(X))}')
+    predikovane_data = []
+    for i in predikcia_forecast:
+        aktualny_datum = dnes + datetime.timedelta(days=den)
+        predikovane_data.append({'Deň': aktualny_datum, 'Predikcia': i})
+        den += 1
+    data_predicted = pd.DataFrame(predikovane_data)
+    st.dataframe(data_predicted)
 
 if __name__ == '__main__':
     main()
