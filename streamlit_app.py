@@ -21,6 +21,9 @@ def main():
 
 def stiahnut_data(user_input, start_date, end_date):
     df = yf.download(user_input, start=start_date, end=end_date, progress=False)
+    # Flatten columns if necessary (handle multi-index case)
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = ['_'.join(col).strip() for col in df.columns.values]
     return df
 
 # Možnosti výberu menového tikera
@@ -33,25 +36,31 @@ end_date = dnes
 
 data = stiahnut_data(moznost, start_date, end_date)
 
+close_column = [col for col in data.columns if 'Close' in col]
+if close_column:
+    data['Close'] = data[close_column[0]]
+
 st.write('Záverečný kurz')
 st.line_chart(data.Close)
 st.header('Nedávne Dáta')
 st.dataframe(data.tail(20))
 
-# Výpočet kĺzavých priemerov
-def pridaj_indikatory(df):
-    df['50ma'] = df['Close'].rolling(50).mean()
-    df['200ma'] = df['Close'].rolling(200).mean()
-    df['stddev'] = df['Close'].rolling(window=20).std()  # volatilita
-    df['momentum'] = df['Close'].diff(4)  # 4-denný momentum
-    df['RSI'] = 100 - (100 / (1 + df['Close'].pct_change().rolling(14).mean()))  # RSI indikátor
-    return df
+# Calculating and plotting moving averages
+st.header('Jednoduchý kĺzavý priemer za 50 dní')
+datama50 = data.copy()
+datama50['50ma'] = datama50['Close'].rolling(50).mean()
+st.line_chart(datama50[['50ma', 'Close']])
 
-data = pridaj_indikatory(data)
+st.header('Jednoduchý kĺzavý priemer za 200 dní')
+datama200 = data.copy()
+datama200['200ma'] = datama200['Close'].rolling(200).mean()
+st.line_chart(datama200[['200ma', 'Close']])
+
+# Merging 50ma and 200ma data for combined chart
+spojene_data = pd.concat([datama200[['200ma', 'Close']], datama50[['50ma']]], axis=1)
 
 st.header('Jednoduchý kĺzavý priemer za 50 dní a 200 dní')
-st.line_chart(data[['50ma', '200ma', 'Close']])
-
+st.line_chart(spojene_data)
 # Pre spracovanie modelov
 scaler = StandardScaler()
 
