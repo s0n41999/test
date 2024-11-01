@@ -11,7 +11,6 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import GridSearchCV
-import matplotlib.pyplot as plt
 
 #-----------------NASTAVENIA-----------------
 
@@ -139,29 +138,20 @@ def vykonat_model(model, pocet_dni, model_name):
     den = 1
     predikovane_data = []
     for i in predikcia_forecast:
-        aktualny_datum = dnes + datetime.timedelta(days=den)
+        aktualny_datum = data.index[-1] + datetime.timedelta(days=den)
         predikovane_data.append({'Date': aktualny_datum, 'Predikcia': i})
         den += 1
     data_predicted = pd.DataFrame(predikovane_data)
-
-    # Príprava dát na vizualizáciu
-    posledny_datum = data.index[-1]
-    future_dates = pd.date_range(posledny_datum + pd.Timedelta(days=1), periods=pocet_dni, freq='B')  # 'B' pre pracovné dni
-    data_predicted['Date'] = future_dates
     data_predicted.set_index('Date', inplace=True)
 
-    # Kombinovanie historických dát a predikcií
-    df_all = pd.concat([data[['Close']], data_predicted.rename(columns={'Predikcia': 'Close'})])
+    # Combine historical data and predictions
+    df_combined = pd.DataFrame(index=pd.concat([data.index, data_predicted.index]))
+    df_combined['Close'] = data['Close']
+    df_combined['Predikcia'] = data_predicted['Predikcia']
 
-    # Vykreslenie grafu
+    # Plot using st.line_chart
     st.header('Historické dáta a predikcia')
-    plt.figure(figsize=(12,6))
-    plt.plot(data.index, data['Close'], label='Historické dáta')
-    plt.plot(data_predicted.index, data_predicted['Predikcia'], label='Predikcia', color='red')
-    plt.xlabel('Dátum')
-    plt.ylabel('Hodnota')
-    plt.legend()
-    st.pyplot(plt)
+    st.line_chart(df_combined)
 
     # Zobrazenie tabuľky s predikciami
     st.dataframe(data_predicted)
