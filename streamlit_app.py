@@ -5,13 +5,13 @@ import yfinance as yf
 import datetime
 from datetime import date
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import GridSearchCV
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-#-----------------SETTINGS-----------------
+#-----------------NASTAVENIA-----------------
 
 st.set_page_config(layout="centered")
 
@@ -32,7 +32,7 @@ def stiahnut_data(user_input, start_date, end_date):
 moznost = st.selectbox('Zadajte menový tiker', ['EURUSD=X','JPY=X', 'GBPUSD=X'])
 moznost = moznost.upper()
 dnes = datetime.date.today()
-start = dnes - datetime.timedelta(days=1825)  # Reduced to 5 years for efficiency
+start = dnes - datetime.timedelta(days=3650)
 start_date = start
 end_date = dnes
 
@@ -97,24 +97,24 @@ def vykonat_model(model, pocet_dni, model_name):
     x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
     y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
 
-    # Optimized Randomized Search parameters
+    # Optimized Grid Search parameters for Random Forest
     if model_name == 'Regresor náhodného lesa':
-        param_grid_rf = {
-            'n_estimators': [50, 100, 150],
-            'max_depth': [10, 15, 20],
-            'min_samples_split': [5, 10],
-            'min_samples_leaf': [2, 5]
+        param_grid = {
+            'n_estimators': [50, 100, 200],
+            'max_depth': [None, 10, 20, 30],
+            'min_samples_split': [2, 5, 10],
+            'min_samples_leaf': [1, 2, 4]
         }
-        grid_search = RandomizedSearchCV(model, param_grid_rf, cv=3, scoring='neg_mean_squared_error', n_iter=10)
+        grid_search = GridSearchCV(model, param_grid, cv=3, scoring='neg_mean_squared_error')
         grid_search.fit(x_trenovanie, y_trenovanie)
         model = grid_search.best_estimator_
         st.write(f'Najlepšie hyperparametre: {grid_search.best_params_}')
     elif model_name == 'Regresor K najbližších susedov':
-        param_grid_knn = {
-            'n_neighbors': [3, 5, 7],
-            'weights': ['distance']
+        param_grid = {
+            'n_neighbors': [1, 3, 5, 7, 10],
+            'weights': ['uniform', 'distance']
         }
-        grid_search = GridSearchCV(model, param_grid_knn, cv=3, scoring='neg_mean_squared_error')
+        grid_search = GridSearchCV(model, param_grid, cv=3, scoring='neg_mean_squared_error')
         grid_search.fit(x_trenovanie, y_trenovanie)
         model = grid_search.best_estimator_
         st.write(f'Najlepšie hyperparametre: {grid_search.best_params_}')
@@ -130,11 +130,11 @@ def vykonat_model(model, pocet_dni, model_name):
     mae = mean_absolute_error(y_testovanie, predikcia)
     st.text(f'RMSE: {rmse}\nMAE: {mae}')
 
-    # Forecast for next days
+    # Predikcia na ďalšie dni
     posledne_hodnoty = x[-pocet_dni:]
     predikcia_forecast = model.predict(posledne_hodnoty)
 
-    # Display predictions
+    # Zobrazenie predikcií
     den = 1
     predikovane_data = []
     for i in predikcia_forecast:
