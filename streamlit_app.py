@@ -51,12 +51,12 @@ st.header('Nedávne Dáta')
 st.dataframe(data.tail(20))
 
 # Calculating and plotting moving averages
-st.header('Jednoduchý klzavý priemer za 50 dní')
+st.header('Jednoduchý kĺzavý priemer za 50 dní')
 datama50 = data.copy()
 datama50['50ma'] = datama50['Close'].rolling(50).mean()
 st.line_chart(datama50[['50ma', 'Close']])
 
-st.header('Jednoduchý klzavý priemer za 200 dní')
+st.header('Jednoduchý kĺzavý priemer za 200 dní')
 datama200 = data.copy()
 datama200['200ma'] = datama200['Close'].rolling(200).mean()
 st.line_chart(datama200[['200ma', 'Close']])
@@ -64,14 +64,14 @@ st.line_chart(datama200[['200ma', 'Close']])
 # Merging 50ma and 200ma data for combined chart
 spojene_data = pd.concat([datama200[['200ma', 'Close']], datama50[['50ma']]], axis=1)
 
-st.header('Jednoduchý klzavý priemer za 50 dní a 200 dní')
+st.header('Jednoduchý kĺzavý priemer za 50 dní a 200 dní')
 st.line_chart(spojene_data)
 
 def predikcia():
     model_option = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
     pocet_dni = st.number_input('Koľko dní chcete predpovedať?', value=5)
     pocet_dni = int(pocet_dni)
-    if st.button('Predikováť'):
+    if st.button('Predikovať'):
         if model_option == 'Lineárna Regresia':
             algoritmus = LinearRegression()
             vykonat_model(algoritmus, pocet_dni, model_option)
@@ -100,21 +100,21 @@ def vykonat_model(model, pocet_dni, model_name):
     # Optimized Grid Search parameters for Random Forest
     if model_name == 'Regresor náhodného lesa':
         param_grid = {
-            'n_estimators': [50, 100],  # Reduced range for faster computation
-            'max_depth': [10, 20],  # Focus on moderate depth to balance bias-variance
-            'min_samples_split': [2, 5],  # Common values to control tree splitting
-            'min_samples_leaf': [1, 2]  # Fewer values to reduce complexity
+            'n_estimators': [50, 100, 200],
+            'max_depth': [None, 10, 20, 30],
+            'min_samples_split': [2, 5, 10],
+            'min_samples_leaf': [1, 2, 4]
         }
-        grid_search = GridSearchCV(model, param_grid, cv=3, scoring='neg_mean_squared_error', n_jobs=-1)
+        grid_search = GridSearchCV(model, param_grid, cv=3, scoring='neg_mean_squared_error')
         grid_search.fit(x_trenovanie, y_trenovanie)
         model = grid_search.best_estimator_
         st.write(f'Najlepšie hyperparametre: {grid_search.best_params_}')
     elif model_name == 'Regresor K najbližších susedov':
         param_grid = {
-            'n_neighbors': [3, 5, 7],  # Reduced range for efficiency
-            'weights': ['uniform', 'distance']  # Standard options to consider
+            'n_neighbors': [1, 3, 5, 7, 10],
+            'weights': ['uniform', 'distance']
         }
-        grid_search = GridSearchCV(model, param_grid, cv=3, scoring='neg_mean_squared_error', n_jobs=-1)
+        grid_search = GridSearchCV(model, param_grid, cv=3, scoring='neg_mean_squared_error')
         grid_search.fit(x_trenovanie, y_trenovanie)
         model = grid_search.best_estimator_
         st.write(f'Najlepšie hyperparametre: {grid_search.best_params_}')
