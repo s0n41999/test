@@ -138,22 +138,10 @@ def vykonat_model(model, pocet_dni, model_name):
     den = 1
     predikovane_data = []
     for i in predikcia_forecast:
-        aktualny_datum = data.index[-1] + datetime.timedelta(days=den)
-        predikovane_data.append({'Date': aktualny_datum, 'Predikcia': i})
+        aktualny_datum = dnes + datetime.timedelta(days=den)
+        predikovane_data.append({'Deň': aktualny_datum, 'Predikcia': i})
         den += 1
     data_predicted = pd.DataFrame(predikovane_data)
-    data_predicted.set_index('Date', inplace=True)
-
-    # Combine historical data and predictions
-    df_combined = pd.DataFrame(index=pd.concat([data.index, data_predicted.index]))
-    df_combined['Close'] = data['Close']
-    df_combined['Predikcia'] = data_predicted['Predikcia']
-
-    # Plot using st.line_chart
-    st.header('Historické dáta a predikcia')
-    st.line_chart(df_combined)
-
-    # Zobrazenie tabuľky s predikciami
     st.dataframe(data_predicted)
 
 if __name__ == '__main__':
