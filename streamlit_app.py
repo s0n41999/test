@@ -81,7 +81,7 @@ def predikcia():
 
 # Optimalizovaný model s TimeSeriesSplit a GridSearchCV
 def vykonat_model(model, pocet_dni): 
-    df = data[['Close', '50ma', '200ma', 'stddev', 'momentum', 'RSI']].dropna()
+    df = data.dropna()
     df['predikcia'] = df['Close'].shift(-pocet_dni)
     X = df.drop(['predikcia'], axis=1).values
     X = scaler.fit_transform(X)
