@@ -3,20 +3,14 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import datetime
-from datetime import date
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import TimeSeriesSplit
+from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
-from sklearn.model_selection import GridSearchCV
-
-#-----------------NASTAVENIA-----------------
 
 st.set_page_config(layout="centered")
-
-#------------------------------------------
 
 st.title('Predikcia časových radov vybraných valutových kurzov')
 
@@ -25,12 +19,11 @@ def main():
 
 def stiahnut_data(user_input, start_date, end_date):
     df = yf.download(user_input, start=start_date, end=end_date, progress=False)
-    # Flatten columns if necessary (handle multi-index case)
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = ['_'.join(col).strip() for col in df.columns.values]
     return df
 
-moznost = st.selectbox('Zadajte menový tiker', ['EURUSD=X','JPY=X', 'GBPUSD=X'])
+moznost = st.selectbox('Zadajte menový tiker', ['EURUSD=X', 'JPY=X', 'GBPUSD=X'])
 moznost = moznost.upper()
 dnes = datetime.date.today()
 start = dnes - datetime.timedelta(days=3650)
@@ -40,32 +33,25 @@ end_date = dnes
 data = stiahnut_data(moznost, start_date, end_date)
 scaler = StandardScaler()
 
-# Ensure the 'Close' column is accessible even if multi-indexed
 close_column = [col for col in data.columns if 'Close' in col]
 if close_column:
     data['Close'] = data[close_column[0]]
 
-# Plotting the data
 st.write('Záverečný kurz')
 st.line_chart(data['Close'])
 st.header('Nedávne Dáta')
 st.dataframe(data.tail(20))
 
-# Calculating and plotting moving averages
 st.header('Jednoduchý kĺzavý priemer za 50 dní')
-datama50 = data.copy()
-datama50['50ma'] = datama50['Close'].rolling(50).mean()
-st.line_chart(datama50[['50ma', 'Close']])
+data['50ma'] = data['Close'].rolling(50).mean()
+st.line_chart(data[['50ma', 'Close']])
 
 st.header('Jednoduchý kĺzavý priemer za 200 dní')
-datama200 = data.copy()
-datama200['200ma'] = datama200['Close'].rolling(200).mean()
-st.line_chart(datama200[['200ma', 'Close']])
-
-# Merging 50ma and 200ma data for combined chart
-spojene_data = pd.concat([datama200[['200ma', 'Close']], datama50[['50ma']]], axis=1)
+data['200ma'] = data['Close'].rolling(200).mean()
+st.line_chart(data[['200ma', 'Close']])
 
 st.header('Jednoduchý kĺzavý priemer za 50 dní a 200 dní')
+spojene_data = data[['50ma', '200ma', 'Close']]
 st.line_chart(spojene_data)
 
 def predikcia():
@@ -84,21 +70,18 @@ def predikcia():
             vykonat_model(algoritmus, pocet_dni, model_option)
 
 def vykonat_model(model, pocet_dni, model_name): 
-    df = data[['Close']].copy()
+    df = data[['Close']].copy()  # Vyberáme len 'Close' stĺpec
     df['predikcia'] = df['Close'].shift(-pocet_dni)
     df.dropna(inplace=True)
     x = df[['Close']].values
     y = df['predikcia'].values
 
-    # Scale the features
     x = scaler.fit_transform(x)
-
-    # Split data chronologically
     train_size = int(len(x) * 0.8)
     x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
     y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
 
-    # Hyperparameter tuning for Random Forest and KNN
+    # Ak model vyžaduje hyperparameter tuning
     if model_name == 'Regresor náhodného lesa':
         param_grid = {
             'n_estimators': [50, 100, 200],
@@ -119,22 +102,16 @@ def vykonat_model(model, pocet_dni, model_name):
         model = grid_search.best_estimator_
         st.write(f'Najlepšie hyperparametre: {grid_search.best_params_}')
 
-    # Train the model
     model.fit(x_trenovanie, y_trenovanie)
 
-    # Prediction on test set
     predikcia = model.predict(x_testovanie)
-
-    # Evaluate the model
     rmse = np.sqrt(mean_squared_error(y_testovanie, predikcia))
     mae = mean_absolute_error(y_testovanie, predikcia)
     st.text(f'RMSE: {rmse}\nMAE: {mae}')
 
-    # Predikcia na ďalšie dni
     posledne_hodnoty = x[-pocet_dni:]
     predikcia_forecast = model.predict(posledne_hodnoty)
 
-    # Zobrazenie predikcií
     den = 1
     predikovane_data = []
     for i in predikcia_forecast:
