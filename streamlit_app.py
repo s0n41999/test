@@ -149,7 +149,6 @@ def vykonat_model(model, pocet_dni):
     rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
     st.text(f'RMSE: {rmse} \
             \nMAE: {mean_absolute_error(y_testovanie, predikcia)}')
-    
         data_predicted = pd.DataFrame(predikovane_data)
         st.dataframe(data_predicted)
 
