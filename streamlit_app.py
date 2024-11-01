@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import datetime
+from datetime import date
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
 from sklearn.linear_model import LinearRegression
@@ -10,6 +11,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
+#-----------------NASTAVENIA-----------------
 st.set_page_config(layout="centered")
 
 st.title('Predikcia časových radov vybraných valutových kurzov')
@@ -19,11 +21,10 @@ def main():
 
 def stiahnut_data(user_input, start_date, end_date):
     df = yf.download(user_input, start=start_date, end=end_date, progress=False)
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = ['_'.join(col).strip() for col in df.columns.values]
     return df
 
-moznost = st.selectbox('Zadajte menový tiker', ['EURUSD=X', 'JPY=X', 'GBPUSD=X'])
+# Možnosti výberu menového tikera
+moznost = st.selectbox('Zadajte menový tiker', ['EURUSD=X','JPY=X', 'GBPUSD=X'])
 moznost = moznost.upper()
 dnes = datetime.date.today()
 start = dnes - datetime.timedelta(days=3650)
@@ -31,95 +32,92 @@ start_date = start
 end_date = dnes
 
 data = stiahnut_data(moznost, start_date, end_date)
-scaler = StandardScaler()
-
-close_column = [col for col in data.columns if 'Close' in col]
-if close_column:
-    data['Close'] = data[close_column[0]]
 
 st.write('Záverečný kurz')
-st.line_chart(data['Close'])
+st.line_chart(data.Close)
 st.header('Nedávne Dáta')
 st.dataframe(data.tail(20))
 
-st.header('Jednoduchý kĺzavý priemer za 50 dní')
-data['50ma'] = data['Close'].rolling(50).mean()
-st.line_chart(data[['50ma', 'Close']])
+# Výpočet kĺzavých priemerov
+def pridaj_indikatory(df):
+    df['50ma'] = df['Close'].rolling(50).mean()
+    df['200ma'] = df['Close'].rolling(200).mean()
+    df['stddev'] = df['Close'].rolling(window=20).std()  # volatilita
+    df['momentum'] = df['Close'].diff(4)  # 4-denný momentum
+    df['RSI'] = 100 - (100 / (1 + df['Close'].pct_change().rolling(14).mean()))  # RSI indikátor
+    return df
 
-st.header('Jednoduchý kĺzavý priemer za 200 dní')
-data['200ma'] = data['Close'].rolling(200).mean()
-st.line_chart(data[['200ma', 'Close']])
+data = pridaj_indikatory(data)
 
 st.header('Jednoduchý kĺzavý priemer za 50 dní a 200 dní')
-spojene_data = data[['50ma', '200ma', 'Close']]
-st.line_chart(spojene_data)
+st.line_chart(data[['50ma', '200ma', 'Close']])
 
+# Pre spracovanie modelov
+scaler = StandardScaler()
+
+# Výber modelu a predikcia
 def predikcia():
-    model_option = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
+    model = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
     pocet_dni = st.number_input('Koľko dní chcete predpovedať?', value=5)
     pocet_dni = int(pocet_dni)
     if st.button('Predikovať'):
-        if model_option == 'Lineárna Regresia':
+        if model == 'Lineárna Regresia':
             algoritmus = LinearRegression()
-            vykonat_model(algoritmus, pocet_dni, model_option)
-        elif model_option == 'Regresor náhodného lesa':
-            algoritmus = RandomForestRegressor(random_state=42)
-            vykonat_model(algoritmus, pocet_dni, model_option)
-        elif model_option == 'Regresor K najbližších susedov':
-            algoritmus = KNeighborsRegressor()
-            vykonat_model(algoritmus, pocet_dni, model_option)
+        elif model == 'Regresor náhodného lesa':
+            algoritmus = RandomForestRegressor(n_estimators=100)
+        elif model == 'Regresor K najbližších susedov':
+            algoritmus = KNeighborsRegressor(n_neighbors=5)
 
-def vykonat_model(model, pocet_dni, model_name): 
-    df = data[['Close']].copy()  # Vyberáme len 'Close' stĺpec
+        vykonat_model(algoritmus, pocet_dni)
+
+# Optimalizovaný model s TimeSeriesSplit a GridSearchCV
+def vykonat_model(model, pocet_dni): 
+    df = data[['Close', '50ma', '200ma', 'stddev', 'momentum', 'RSI']].dropna()
     df['predikcia'] = df['Close'].shift(-pocet_dni)
-    df.dropna(inplace=True)
-    x = df[['Close']].values
+    X = df.drop(['predikcia'], axis=1).values
+    X = scaler.fit_transform(X)
+    X_predikcia = X[-pocet_dni:]
+    X = X[:-pocet_dni]
     y = df['predikcia'].values
+    y = y[:-pocet_dni]
 
-    x = scaler.fit_transform(x)
-    train_size = int(len(x) * 0.8)
-    x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
-    y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
-
-    # Ak model vyžaduje hyperparameter tuning
-    if model_name == 'Regresor náhodného lesa':
-        param_grid = {
-            'n_estimators': [50, 100, 200],
-            'max_depth': [None, 5, 10],
-            'min_samples_split': [2, 5, 10]
-        }
-        grid_search = GridSearchCV(model, param_grid, cv=3, scoring='neg_mean_squared_error')
-        grid_search.fit(x_trenovanie, y_trenovanie)
+    # Používame TimeSeriesSplit namiesto náhodného rozdelenia dát
+    tscv = TimeSeriesSplit(n_splits=5)
+    
+    # Optimalizácia hyperparametrov (napr. v prípade KNN alebo RandomForest)
+    if isinstance(model, KNeighborsRegressor):
+        param_grid = {'n_neighbors': range(2, 10)}
+        grid_search = GridSearchCV(model, param_grid, cv=tscv)
+        grid_search.fit(X, y)
         model = grid_search.best_estimator_
-        st.write(f'Najlepšie hyperparametre: {grid_search.best_params_}')
-    elif model_name == 'Regresor K najbližších susedov':
-        param_grid = {
-            'n_neighbors': [3, 5, 7],
-            'weights': ['uniform', 'distance']
-        }
-        grid_search = GridSearchCV(model, param_grid, cv=3, scoring='neg_mean_squared_error')
-        grid_search.fit(x_trenovanie, y_trenovanie)
+    elif isinstance(model, RandomForestRegressor):
+        param_grid = {'n_estimators': [50, 100, 200]}
+        grid_search = GridSearchCV(model, param_grid, cv=tscv)
+        grid_search.fit(X, y)
         model = grid_search.best_estimator_
-        st.write(f'Najlepšie hyperparametre: {grid_search.best_params_}')
 
-    model.fit(x_trenovanie, y_trenovanie)
+    # Trénovanie modelu s TimeSeriesSplit
+    model.fit(X, y)
+    predikcia_forecast = model.predict(X_predikcia)
 
-    predikcia = model.predict(x_testovanie)
-    rmse = np.sqrt(mean_squared_error(y_testovanie, predikcia))
-    mae = mean_absolute_error(y_testovanie, predikcia)
-    st.text(f'RMSE: {rmse}\nMAE: {mae}')
-
-    posledne_hodnoty = x[-pocet_dni:]
-    predikcia_forecast = model.predict(posledne_hodnoty)
-
-    den = 1
     predikovane_data = []
-    for i in predikcia_forecast:
-        aktualny_datum = dnes + datetime.timedelta(days=den)
-        predikovane_data.append({'Deň': aktualny_datum, 'Predikcia': i})
-        den += 1
-    data_predicted = pd.DataFrame(predikovane_data)
-    st.dataframe(data_predicted)
+    den = 1
+    col1, col2 = st.columns(2)
+
+    with col1:
+        for i in predikcia_forecast:
+            aktualny_datum = dnes + datetime.timedelta(days=den)
+            st.text(f'Deň {den}: {i}')
+            predikovane_data.append({'Deň': aktualny_datum, 'Predikcia': i})
+            den += 1
+
+    with col2:
+        data_predicted = pd.DataFrame(predikovane_data)
+        st.dataframe(data_predicted)
+
+    # RMSE a MAE hodnoty
+    st.text(f'RMSE: {np.sqrt(mean_squared_error(y, model.predict(X)))}')
+    st.text(f'MAE: {mean_absolute_error(y, model.predict(X))}')
 
 if __name__ == '__main__':
     main()
