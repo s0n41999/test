@@ -9,6 +9,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.model_selection import GridSearchCV
 
 #-----------------NASTAVENIA-----------------
 
@@ -23,7 +24,7 @@ def main():
 
 def stiahnut_data(user_input, start_date, end_date):
     df = yf.download(user_input, start=start_date, end=end_date, progress=False)
-    # Flatten columns if necessary (handle multi-index case)
+    # Zjednodušenie názvov stĺpcov, ak je to potrebné
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = ['_'.join(col).strip() for col in df.columns.values]
     return df
@@ -38,18 +39,18 @@ end_date = dnes
 data = stiahnut_data(moznost, start_date, end_date)
 scaler = StandardScaler()
 
-# Ensure the 'Close' column is accessible even if multi-indexed
+# Zaistenie prístupu k stĺpcu 'Close' aj v prípade multi-indexu
 close_column = [col for col in data.columns if 'Close' in col]
 if close_column:
     data['Close'] = data[close_column[0]]
 
-# Plotting the data
+# Zobrazenie dát
 st.write('Záverečný kurz')
 st.line_chart(data['Close'])
 st.header('Nedávne Dáta')
 st.dataframe(data.tail(20))
 
-# Calculating and plotting moving averages
+# Výpočet a zobrazenie kĺzavých priemerov
 st.header('Jednoduchý kĺzavý priemer za 50 dní')
 datama50 = data.copy()
 datama50['50ma'] = datama50['Close'].rolling(50).mean()
@@ -60,7 +61,7 @@ datama200 = data.copy()
 datama200['200ma'] = datama200['Close'].rolling(200).mean()
 st.line_chart(datama200[['200ma', 'Close']])
 
-# Merging 50ma and 200ma data for combined chart
+# Spojenie dát pre kombinovaný graf
 spojene_data = pd.concat([datama200[['200ma', 'Close']], datama50[['50ma']]], axis=1)
 
 st.header('Jednoduchý kĺzavý priemer za 50 dní a 200 dní')
@@ -74,11 +75,43 @@ def predikcia():
         if model_option == 'Lineárna Regresia':
             algoritmus = LinearRegression()
         elif model_option == 'Regresor náhodného lesa':
-            # Define fixed parameters for Random Forest
-            algoritmus = RandomForestRegressor(n_estimators=100, max_depth=20, min_samples_split=5, min_samples_leaf=2, random_state=42)
+            # Optimalizácia hyperparametrov pre Random Forest
+            param_grid = {
+                'n_estimators': [50, 100, 150],
+                'max_depth': [10, 20, 30],
+                'min_samples_split': [2, 5, 10],
+                'min_samples_leaf': [1, 2, 4]
+            }
+            rf = RandomForestRegressor(random_state=42)
+            # Príprava dát pre GridSearchCV
+            df = data[['Close']].copy()
+            df['predikcia'] = df['Close'].shift(-pocet_dni)
+            df.dropna(inplace=True)
+            x = df[['Close']].values
+            y = df['predikcia'].values
+            x = scaler.fit_transform(x)
+            grid_search = GridSearchCV(estimator=rf, param_grid=param_grid, cv=3, n_jobs=-1, verbose=0)
+            grid_search.fit(x, y)
+            algoritmus = grid_search.best_estimator_
+            st.write(f"Najlepšie parametre: {grid_search.best_params_}")
         elif model_option == 'Regresor K najbližších susedov':
-            # Define fixed parameters for KNeighborsRegressor
-            algoritmus = KNeighborsRegressor(n_neighbors=5, weights='distance')
+            # Optimalizácia hyperparametrov pre KNN
+            param_grid = {
+                'n_neighbors': [3, 5, 7, 9],
+                'weights': ['uniform', 'distance']
+            }
+            knn = KNeighborsRegressor()
+            # Príprava dát pre GridSearchCV
+            df = data[['Close']].copy()
+            df['predikcia'] = df['Close'].shift(-pocet_dni)
+            df.dropna(inplace=True)
+            x = df[['Close']].values
+            y = df['predikcia'].values
+            x = scaler.fit_transform(x)
+            grid_search = GridSearchCV(estimator=knn, param_grid=param_grid, cv=3, n_jobs=-1, verbose=0)
+            grid_search.fit(x, y)
+            algoritmus = grid_search.best_estimator_
+            st.write(f"Najlepšie parametre: {grid_search.best_params_}")
         
         vykonat_model(algoritmus, pocet_dni, model_option)
 
@@ -89,21 +122,21 @@ def vykonat_model(model, pocet_dni, model_name):
     x = df[['Close']].values
     y = df['predikcia'].values
 
-    # Scale the features
+    # Škálovanie vstupných údajov
     x = scaler.fit_transform(x)
 
-    # Split data chronologically
+    # Chronologické rozdelenie dát
     train_size = int(len(x) * 0.8)
     x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
     y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
 
-    # Train the model with fixed parameters
+    # Trénovanie modelu
     model.fit(x_trenovanie, y_trenovanie)
 
-    # Prediction on test set
+    # Predikcia na testovacej množine
     predikcia = model.predict(x_testovanie)
 
-    # Evaluate the model
+    # Vyhodnotenie modelu
     rmse = np.sqrt(mean_squared_error(y_testovanie, predikcia))
     mae = mean_absolute_error(y_testovanie, predikcia)
     st.text(f'RMSE: {rmse}\nMAE: {mae}')
