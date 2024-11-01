@@ -5,7 +5,7 @@ import yfinance as yf
 import datetime
 from datetime import date
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV
+from sklearn.model_selection import GridSearchCV
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
@@ -97,26 +97,26 @@ def vykonat_model(model, pocet_dni, model_name):
     x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
     y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
 
-    # Hyperparameter tuning for Random Forest and KNN using RandomizedSearchCV
+    # Expanded Grid Search parameters for Random Forest and KNN
     if model_name == 'Regresor náhodného lesa':
-        param_distributions = {
-            'n_estimators': [50, 100, 200],
-            'max_depth': [None, 5, 10],
+        param_grid = {
+            'n_estimators': [100, 200, 300, 400, 500],
+            'max_depth': [10, 20, 30, 40, 50],
             'min_samples_split': [2, 5, 10]
         }
-        random_search = RandomizedSearchCV(model, param_distributions, n_iter=10, cv=3, scoring='neg_mean_squared_error', random_state=42)
-        random_search.fit(x_trenovanie, y_trenovanie)
-        model = random_search.best_estimator_
-        st.write(f'Najlepšie hyperparametre: {random_search.best_params_}')
+        grid_search = GridSearchCV(model, param_grid, cv=3, scoring='neg_mean_squared_error')
+        grid_search.fit(x_trenovanie, y_trenovanie)
+        model = grid_search.best_estimator_
+        st.write(f'Najlepšie hyperparametre: {grid_search.best_params_}')
     elif model_name == 'Regresor K najbližších susedov':
-        param_distributions = {
-            'n_neighbors': [3, 5, 7],
+        param_grid = {
+            'n_neighbors': [1, 3, 5, 7, 10],
             'weights': ['uniform', 'distance']
         }
-        random_search = RandomizedSearchCV(model, param_distributions, n_iter=10, cv=3, scoring='neg_mean_squared_error', random_state=42)
-        random_search.fit(x_trenovanie, y_trenovanie)
-        model = random_search.best_estimator_
-        st.write(f'Najlepšie hyperparametre: {random_search.best_params_}')
+        grid_search = GridSearchCV(model, param_grid, cv=3, scoring='neg_mean_squared_error')
+        grid_search.fit(x_trenovanie, y_trenovanie)
+        model = grid_search.best_estimator_
+        st.write(f'Najlepšie hyperparametre: {grid_search.best_params_}')
 
     # Train the model
     model.fit(x_trenovanie, y_trenovanie)
