@@ -69,7 +69,6 @@ def dataframe():
 
 # Pre spracovanie modelov
 scaler = StandardScaler()
-
 def predikcia():
     model = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
     pocet_dni = st.number_input('Koľko dní chcete predpovedať?', value=5)
@@ -81,12 +80,15 @@ def predikcia():
         elif model == 'Regresor náhodného lesa':
             algoritmus = RandomForestRegressor()
             vykonat_model(algoritmus, pocet_dni)
+            algoritmus = RandomForestRegressor(n_estimators=100)
         elif model == 'Regresor K najbližších susedov':
             algoritmus = KNeighborsRegressor()
             vykonat_model(algoritmus, pocet_dni)
+            algoritmus = KNeighborsRegressor(n_neighbors=5)
 
+        vykonat_model(algoritmus, pocet_dni)
 
-
+# Optimalizovaný model s TimeSeriesSplit a GridSearchCV
 def vykonat_model(model, pocet_dni): 
     df = data[['Close']]
     df['predikcia'] = data.Close.shift(-pocet_dni)
@@ -95,6 +97,13 @@ def vykonat_model(model, pocet_dni):
     x_predikcia = x[-pocet_dni:]
     x = x[:-pocet_dni]
     y = df.predikcia.values
+    df = data[['Close', '50ma', '200ma', 'stddev', 'momentum', 'RSI']].dropna()
+    df['predikcia'] = df['Close'].shift(-pocet_dni)
+    X = df.drop(['predikcia'], axis=1).values
+    X = scaler.fit_transform(X)
+    X_predikcia = X[-pocet_dni:]
+    X = X[:-pocet_dni]
+    y = df['predikcia'].values
     y = y[:-pocet_dni]
 
     #rozdelenie dát
@@ -102,11 +111,28 @@ def vykonat_model(model, pocet_dni):
     # trénovanie modelu
     model.fit(x_trenovanie, y_trenovanie)
     predikcia = model.predict(x_testovanie)
-    
+    # Používame TimeSeriesSplit namiesto náhodného rozdelenia dát
+    tscv = TimeSeriesSplit(n_splits=5)
+
     # predikcia na základe počtu dní
     predikcia_forecast = model.predict(x_predikcia)
     den = 1
+    # Optimalizácia hyperparametrov (napr. v prípade KNN alebo RandomForest)
+    if isinstance(model, KNeighborsRegressor):
+        param_grid = {'n_neighbors': range(2, 10)}
+        grid_search = GridSearchCV(model, param_grid, cv=tscv)
+        grid_search.fit(X, y)
+        model = grid_search.best_estimator_
+    elif isinstance(model, RandomForestRegressor):
+        param_grid = {'n_estimators': [50, 100, 200]}
+        grid_search = GridSearchCV(model, param_grid, cv=tscv)
+        grid_search.fit(X, y)
+        model = grid_search.best_estimator_
+    # Trénovanie modelu s TimeSeriesSplit
+    model.fit(X, y)
+    predikcia_forecast = model.predict(X_predikcia)
     predikovane_data = []
+    den = 1
     col1, col2 = st.columns(2)
 
     with col1:
@@ -123,7 +149,13 @@ def vykonat_model(model, pocet_dni):
     rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
     st.text(f'RMSE: {rmse} \
             \nMAE: {mean_absolute_error(y_testovanie, predikcia)}')
+    
+        data_predicted = pd.DataFrame(predikovane_data)
+        st.dataframe(data_predicted)
 
+    # RMSE a MAE hodnoty
+    st.text(f'RMSE: {np.sqrt(mean_squared_error(y, model.predict(X)))}')
+    st.text(f'MAE: {mean_absolute_error(y, model.predict(X))}')
 
 if __name__ == '__main__':
     main()
