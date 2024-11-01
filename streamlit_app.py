@@ -144,24 +144,5 @@ def vykonat_model(model, pocet_dni, model_name):
     data_predicted = pd.DataFrame(predikovane_data)
     st.dataframe(data_predicted)
 
-    # Plotting the last month's data and predictions
-    last_month_data = data['Close'].tail(30)
-    last_date = data.index[-1]
-    future_dates = pd.date_range(start=last_date + datetime.timedelta(days=1), periods=pocet_dni, freq='B')
-
-    # Create DataFrames
-    df_historical = pd.DataFrame({'Date': last_month_data.index, 'Historical': last_month_data.values})
-    df_predictions = pd.DataFrame({'Date': future_dates, 'Predictions': predikcia_forecast})
-
-    # Set 'Date' as index
-    df_historical.set_index('Date', inplace=True)
-    df_predictions.set_index('Date', inplace=True)
-
-    # Combine into a single DataFrame
-    df_plot = pd.concat([df_historical, df_predictions], axis=1)
-
-    st.header('Historické dáta a predikcie')
-    st.line_chart(df_plot)
-
 if __name__ == '__main__':
     main()
