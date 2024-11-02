@@ -22,9 +22,9 @@ st.set_page_config(layout="centered")
 st.title('Predikcia časových radov vybraných valutových kurzov')
 
 def main():
-    predikcia()
     if st.button('Zobraziť aktuálne správy'):  # Pridaný gombík pre zobrazenie správ
         zobraz_spravy()
+    predikcia()
 
 def stiahnut_data(user_input, start_date, end_date):
     df = yf.download(user_input, start=start_date, end=end_date, progress=False)
@@ -70,20 +70,6 @@ spojene_data = pd.concat([datama200[['200ma', 'Close']], datama50[['50ma']]], ax
 
 st.header('Jednoduchý kĺzavý priemer za 50 dní a 200 dní')
 st.line_chart(spojene_data)
-
-def zobraz_spravy():
-    st.header('Aktuálne Správy súvisiace s Menovým Trhom')
-    st.write('Načítavam aktuálne správy z RSS kanálov...')
-    # Použitie RSS feedu pre načítanie finančných správ
-    feed_url = 'https://www.fxstreet.com/rss/news'  # Typický zdroj finančných aktualít
-    feed = feedparser.parse(feed_url)
-    if len(feed.entries) > 0:
-        for entry in feed.entries[:5]:  # Zobrazíme prvých 5 správ
-            st.subheader(entry.title)
-            st.write(entry.summary)
-            st.write(f"[Čítať viac]({entry.link})")
-    else:
-        st.write('Nenašli sa žiadne správy.')
 
 def predikcia():
     model_options = {
@@ -142,6 +128,19 @@ def predikcia():
             mime='text/csv'
         )
 
+def zobraz_spravy():
+    st.header('Aktuálne Správy súvisiace s Menovým Trhom')
+    st.write('Načítavam aktuálne správy z RSS kanálov...')
+    # Použitie RSS feedu pre načítanie finančných správ
+    feed_url = 'https://www.fxstreet.com/rss/news'  # Typický zdroj finančných aktualít
+    feed = feedparser.parse(feed_url)
+    if len(feed.entries) > 0:
+        for entry in feed.entries[:5]:  # Zobrazíme prvých 5 správ
+            st.subheader(entry.title)
+            st.write(entry.summary)
+            st.write(f"[Čítať viac]({entry.link})")
+    else:
+        st.write('Nenašli sa žiadne správy.')
 
 if __name__ == '__main__':
     main()
