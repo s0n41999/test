@@ -77,16 +77,17 @@ def predikcia():
             """
             <style>
             .stContainer {
-                border: 2px solid #ff4b4b;
-                padding: 10px;
+                border: 2px solid #007bff;
+                padding: 20px;
                 border-radius: 10px;
+                margin-bottom: 20px;
             }
             </style>
             <div class="stContainer">
-            </div>
-            """,
+        """,
             unsafe_allow_html=True
         )
+
         model_options = {
             'Lineárna Regresia': LinearRegression(),
             'Regresor náhodného lesa': RandomForestRegressor(),
@@ -142,6 +143,8 @@ def predikcia():
                 file_name='predikcia.csv',
                 mime='text/csv'
             )
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
 def zobraz_spravy():
     st.header('Aktuálne Správy súvisiace s Menovým Trhom')
