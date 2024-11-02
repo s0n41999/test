@@ -23,7 +23,8 @@ st.title('Predikcia časových radov vybraných valutových kurzov')
 
 def main():
     predikcia()
-    zobraz_spravy()
+    if st.button('Zobraziť aktuálne správy'):  # Pridaný gombík pre zobrazenie správ
+        zobraz_spravy()
 
 def stiahnut_data(user_input, start_date, end_date):
     df = yf.download(user_input, start=start_date, end=end_date, progress=False)
