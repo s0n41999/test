@@ -116,7 +116,7 @@ def predikcia():
         st.text(f'RMSE: {rmse} \nMAE: {mae}')
 
         # Button to download prediction data with the correct delimiter
-        csv = data_predicted.to_csv(index=False, sep=',')
+        csv = data_predicted.to_csv(index=False, sep=';', encoding='utf-8')
         st.download_button(
             label="Stiahnuť predikciu ako CSV",
             data=csv,
