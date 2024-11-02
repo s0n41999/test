@@ -10,7 +10,6 @@ from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error  
-import matplotlib.pyplot as plt
 
 #-----------------NASTAVENIA-----------------
 
@@ -116,14 +115,6 @@ def predikcia():
         mae = mean_absolute_error(y_testovanie, predikcia)
         st.text(f'RMSE: {rmse} \nMAE: {mae}')
 
-        # Porovnanie Skutočných a Predikovaných Hodnôt na Testovacej Sade
-        st.header('Porovnanie Skutočných a Predikovaných Hodnôt')
-        fig, ax = plt.subplots()
-        ax.plot(y_testovanie, label='Skutočné hodnoty', color='blue')
-        ax.plot(predikcia, label='Predikované hodnoty', color='red')
-        ax.legend()
-        st.pyplot(fig)
-
         # Button to download prediction data with the correct delimiter
         csv = data_predicted.to_csv(index=False, sep=';', encoding='utf-8')
         st.download_button(
@@ -132,6 +123,14 @@ def predikcia():
             file_name='predikcia.csv',
             mime='text/csv'
         )
+
+        # Porovnanie Skutočných a Predikovaných Hodnôt na Testovacej Sade
+        st.header('Porovnanie Skutočných a Predikovaných Hodnôt')
+        porovnanie_df = pd.DataFrame({
+            'Skutočné hodnoty': y_testovanie,
+            'Predikované hodnoty': predikcia
+        })
+        st.line_chart(porovnanie_df)
 
 if __name__ == '__main__':
     main()
