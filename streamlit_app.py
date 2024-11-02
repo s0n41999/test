@@ -124,13 +124,5 @@ def predikcia():
             mime='text/csv'
         )
 
-        # Porovnanie Skutočných a Predikovaných Hodnôt na Testovacej Sade
-        st.header('Porovnanie Skutočných a Predikovaných Hodnôt')
-        porovnanie_df = pd.DataFrame({
-            'Skutočné hodnoty': y_testovanie,
-            'Predikované hodnoty': predikcia
-        })
-        st.line_chart(porovnanie_df)
-
 if __name__ == '__main__':
     main()
