@@ -10,6 +10,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error  
+import requests
+import feedparser
 
 #-----------------NASTAVENIA-----------------
 
@@ -21,6 +23,7 @@ st.title('Predikcia časových radov vybraných valutových kurzov')
 
 def main():
     predikcia()
+    zobraz_spravy()
 
 def stiahnut_data(user_input, start_date, end_date):
     df = yf.download(user_input, start=start_date, end=end_date, progress=False)
@@ -123,6 +126,20 @@ def predikcia():
             file_name='predikcia.csv',
             mime='text/csv'
         )
+
+def zobraz_spravy():
+    st.header('Aktuálne Správy súvisiace s Menovým Trhom')
+    st.write('Načítavam aktuálne správy z RSS kanálov...')
+    # Použitie RSS feedu pre načítanie finančných správ
+    feed_url = 'https://www.fxstreet.com/rss/news'  # Typický zdroj finančných aktualít
+    feed = feedparser.parse(feed_url)
+    if len(feed.entries) > 0:
+        for entry in feed.entries[:5]:  # Zobrazíme prvých 5 správ
+            st.subheader(entry.title)
+            st.write(entry.summary)
+            st.write(f"[Čítať viac]({entry.link})")
+    else:
+        st.write('Nenašli sa žiadne správy.')
 
 if __name__ == '__main__':
     main()
