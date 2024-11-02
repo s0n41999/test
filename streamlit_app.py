@@ -103,21 +103,30 @@ def predikcia():
         predikcia_forecast = algoritmus.predict(x_predikcia)
         den = 1
         predikovane_data = []
-        col1, col2 = st.columns(2)
+        for i in predikcia_forecast:
+            aktualny_datum = dnes + datetime.timedelta(days=den)
+            st.text(f'Deň {den}: {i}')
+            predikovane_data.append({'Deň': aktualny_datum, 'Predikcia': i})
+            den += 1
 
-        with col1:
-            for i in predikcia_forecast:
-                aktualny_datum = dnes + datetime.timedelta(days=den)
-                st.text(f'Deň {den}: {i}')
-                predikovane_data.append({'Deň': aktualny_datum, 'Predikcia': i})
-                den += 1
-
-        with col2:
-            data_predicted = pd.DataFrame(predikovane_data)
-            st.dataframe(data_predicted)
+        data_predicted = pd.DataFrame(predikovane_data)
 
         rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
-        st.text(f'RMSE: {rmse} \nMAE: {mean_absolute_error(y_testovanie, predikcia)}')
+        mae = mean_absolute_error(y_testovanie, predikcia)
+        st.text(f'RMSE: {rmse} \nMAE: {mae}')
+
+        # Button to download prediction data
+        if st.button('Stiahni predikciu'):
+            data_predicted['RMSE'] = rmse
+            data_predicted['MAE'] = mae
+            csv = data_predicted.to_csv(index=False)
+            st.download_button(
+                label="Stiahnuť predikciu ako CSV",
+                data=csv,
+                file_name='predikcia.csv',
+                mime='text/csv'
+            )
 
 if __name__ == '__main__':
     main()
+
