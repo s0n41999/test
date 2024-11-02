@@ -72,61 +72,76 @@ st.header('Jednoduchý kĺzavý priemer za 50 dní a 200 dní')
 st.line_chart(spojene_data)
 
 def predikcia():
-    model_options = {
-        'Lineárna Regresia': LinearRegression(),
-        'Regresor náhodného lesa': RandomForestRegressor(),
-        'Regresor K najbližších susedov': KNeighborsRegressor()
-    }
-    
-    model = st.selectbox('Vyberte model', list(model_options.keys()))
-    pocet_dni = st.number_input('Koľko dní chcete predpovedať?', value=5)
-    pocet_dni = int(pocet_dni)
-    if st.button('Predikovať'):
-        algoritmus = model_options.get(model)
-        
-        # Vykonanie modelu
-        df = data[['Close']]
-        df['predikcia'] = data.Close.shift(-pocet_dni)
-        x = df.drop(['predikcia'], axis=1).values
-        x = scaler.fit_transform(x)
-        x_predikcia = x[-pocet_dni:]
-        x = x[:-pocet_dni]
-        y = df.predikcia.values
-        y = y[:-pocet_dni]
-
-        # Rozdelenie dát
-        train_size = int(len(x) * 0.8)
-        x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
-        y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
-
-        # Trénovanie modelu
-        algoritmus.fit(x_trenovanie, y_trenovanie)
-        predikcia = algoritmus.predict(x_testovanie)
-
-        # Predikcia na základe počtu dní
-        predikcia_forecast = algoritmus.predict(x_predikcia)
-        den = 1
-        predikovane_data = []
-        for i in predikcia_forecast:
-            aktualny_datum = dnes + datetime.timedelta(days=den)
-            st.text(f'Deň {den}: {i}')
-            predikovane_data.append({'datum': aktualny_datum, 'predikcia': i})
-            den += 1
-
-        data_predicted = pd.DataFrame(predikovane_data)
-
-        rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
-        mae = mean_absolute_error(y_testovanie, predikcia)
-        st.text(f'RMSE: {rmse} \nMAE: {mae}')
-
-        # Button to download prediction data with the correct delimiter
-        csv = data_predicted.to_csv(index=False, sep=';', encoding='utf-8')
-        st.download_button(
-            label="Stiahnuť predikciu ako CSV",
-            data=csv,
-            file_name='predikcia.csv',
-            mime='text/csv'
+    with st.container():
+        st.markdown(
+            """
+            <style>
+            .stContainer {
+                border: 2px solid #ff4b4b;
+                padding: 10px;
+                border-radius: 10px;
+            }
+            </style>
+            <div class="stContainer">
+            </div>
+            """,
+            unsafe_allow_html=True
         )
+        model_options = {
+            'Lineárna Regresia': LinearRegression(),
+            'Regresor náhodného lesa': RandomForestRegressor(),
+            'Regresor K najbližších susedov': KNeighborsRegressor()
+        }
+        
+        model = st.selectbox('Vyberte model', list(model_options.keys()))
+        pocet_dni = st.number_input('Koľko dní chcete predpovedať?', value=5)
+        pocet_dni = int(pocet_dni)
+        if st.button('Predikovať'):
+            algoritmus = model_options.get(model)
+            
+            # Vykonanie modelu
+            df = data[['Close']]
+            df['predikcia'] = data.Close.shift(-pocet_dni)
+            x = df.drop(['predikcia'], axis=1).values
+            x = scaler.fit_transform(x)
+            x_predikcia = x[-pocet_dni:]
+            x = x[:-pocet_dni]
+            y = df.predikcia.values
+            y = y[:-pocet_dni]
+
+            # Rozdelenie dát
+            train_size = int(len(x) * 0.8)
+            x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
+            y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
+
+            # Trénovanie modelu
+            algoritmus.fit(x_trenovanie, y_trenovanie)
+            predikcia = algoritmus.predict(x_testovanie)
+
+            # Predikcia na základe počtu dní
+            predikcia_forecast = algoritmus.predict(x_predikcia)
+            den = 1
+            predikovane_data = []
+            for i in predikcia_forecast:
+                aktualny_datum = dnes + datetime.timedelta(days=den)
+                st.text(f'Deň {den}: {i}')
+                predikovane_data.append({'datum': aktualny_datum, 'predikcia': i})
+                den += 1
+
+            data_predicted = pd.DataFrame(predikovane_data)
+
+            rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
+            mae = mean_absolute_error(y_testovanie, predikcia)
+            st.text(f'RMSE: {rmse} \nMAE: {mae}')
+
+            # Button to download prediction data with the correct delimiter
+            csv = data_predicted.to_csv(index=False, sep=';', encoding='utf-8')
+            st.download_button(
+                label="Stiahnuť predikciu ako CSV",
+                data=csv,
+                file_name='predikcia.csv',
+                mime='text/csv'
+            )
 
 def zobraz_spravy():
     st.header('Aktuálne Správy súvisiace s Menovým Trhom')
