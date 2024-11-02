@@ -68,16 +68,17 @@ st.header('Jednoduchý kĺzavý priemer za 50 dní a 200 dní')
 st.line_chart(spojene_data)
 
 def predikcia():
-    model = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
+    model_options = {
+        'Lineárna Regresia': LinearRegression(),
+        'Regresor náhodného lesa': RandomForestRegressor(),
+        'Regresor K najbližších susedov': KNeighborsRegressor()
+    }
+    
+    model = st.selectbox('Vyberte model', list(model_options.keys()))
     pocet_dni = st.number_input('Koľko dní chcete predpovedať?', value=5)
     pocet_dni = int(pocet_dni)
-    if st.button('Predikováť'):
-        if model == 'Lineárna Regresia':
-            algoritmus = LinearRegression()
-        elif model == 'Regresor náhodného lesa':
-            algoritmus = RandomForestRegressor()
-        elif model == 'Regresor K najbližších susedov':
-            algoritmus = KNeighborsRegressor()
+    if st.button('Predikovať'):
+        algoritmus = model_options.get(model)
         
         # Vykonanie modelu
         df = data[['Close']]
