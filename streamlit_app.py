@@ -115,8 +115,8 @@ def predikcia():
         mae = mean_absolute_error(y_testovanie, predikcia)
         st.text(f'RMSE: {rmse} \nMAE: {mae}')
 
-        # Button to download prediction data
-        csv = data_predicted.to_csv(index=False)
+        # Button to download prediction data with the correct delimiter
+        csv = data_predicted.to_csv(index=False, sep=',')
         st.download_button(
             label="Stiahnuť predikciu ako CSV",
             data=csv,
