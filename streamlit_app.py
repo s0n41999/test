@@ -116,17 +116,13 @@ def predikcia():
         st.text(f'RMSE: {rmse} \nMAE: {mae}')
 
         # Button to download prediction data
-        if st.button('Stiahni predikciu'):
-            data_predicted['RMSE'] = rmse
-            data_predicted['MAE'] = mae
-            csv = data_predicted.to_csv(index=False)
-            st.download_button(
-                label="Stiahnuť predikciu ako CSV",
-                data=csv,
-                file_name='predikcia.csv',
-                mime='text/csv'
-            )
+        csv = data_predicted.to_csv(index=False)
+        st.download_button(
+            label="Stiahnuť predikciu ako CSV",
+            data=csv,
+            file_name='predikcia.csv',
+            mime='text/csv'
+        )
 
 if __name__ == '__main__':
     main()
-
