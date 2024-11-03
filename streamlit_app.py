@@ -70,7 +70,7 @@ def predikcia():
     model = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
     pocet_dni = st.number_input('Koľko dní chcete predpovedať?', value=5)
     pocet_dni = int(pocet_dni)
-    if st.button('Predikováť'):
+    if st.button('Predikovať'):
         if model == 'Lineárna Regresia':
             algoritmus = LinearRegression()
             vykonat_model(algoritmus, pocet_dni)
