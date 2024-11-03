@@ -141,6 +141,7 @@ def zobraz_spravy():
             if hasattr(entry, 'summary'):
                 st.write(entry.summary)
             st.write(f"[Čítať viac]({entry.link})")
+            st.markdown('---')  # Pridanie oddeľovacej čiary medzi správami
     else:
         st.write('Nenašli sa žiadne správy.')
 
