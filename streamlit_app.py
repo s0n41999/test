@@ -80,30 +80,47 @@ def predikcia():
     model = st.selectbox('Vyberte model', list(model_options.keys()))
     pocet_dni = st.number_input('Koľko dní chcete predpovedať?', value=5)
     pocet_dni = int(pocet_dni)
+    
     if st.button('Predikovať'):
         algoritmus = model_options.get(model)
-        
-        # Vykonanie modelu
-        df = data[['Close']]
-        df['predikcia'] = data.Close.shift(-pocet_dni)
-        x = df.drop(['predikcia'], axis=1).values
-        x = scaler.fit_transform(x)
-        x_predikcia = x[-pocet_dni:]
-        x = x[:-pocet_dni]
-        y = df.predikcia.values
-        y = y[:-pocet_dni]
 
-        # Rozdelenie dát
+        # Príprava dát pre "lagged" predikciu
+        df = data[['Close']].copy()
+        
+        # Pridáme oneskorené hodnoty (lag features) ako prediktory
+        for lag in range(1, pocet_dni + 1):
+            df[f'lag_{lag}'] = df['Close'].shift(lag)
+
+        df.dropna(inplace=True)
+
+        # Vytvorenie vstupných a výstupných hodnôt
+        x = df.drop(['Close'], axis=1).values
+        y = df['Close'].values
+
+        # Rozdelenie dát na tréning a testovanie (na základe časového sledu)
         train_size = int(len(x) * 0.8)
         x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
         y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
 
         # Trénovanie modelu
         algoritmus.fit(x_trenovanie, y_trenovanie)
+
+        # Predikcia na testovacej množine
         predikcia = algoritmus.predict(x_testovanie)
 
-        # Predikcia na základe počtu dní
-        predikcia_forecast = algoritmus.predict(x_predikcia)
+        # Predikcia budúcich hodnôt (na základe posledných známych hodnôt)
+        posledne_data = x[-1].reshape(1, -1)
+        predikcia_forecast = []
+        
+        for _ in range(pocet_dni):
+            buduca_hodnota = algoritmus.predict(posledne_data)[0]
+            predikcia_forecast.append(buduca_hodnota)
+            
+            # Aktualizujeme "lag" hodnoty na ďalšiu predikciu
+            posledne_data = np.roll(posledne_data, -1)
+            posledne_data[0, -1] = buduca_hodnota
+
+        # Výpis predikcií
         den = 1
         predikovane_data = []
         for i in predikcia_forecast:
@@ -114,6 +131,7 @@ def predikcia():
 
         data_predicted = pd.DataFrame(predikovane_data)
 
+        # Hodnotenie modelu
         rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
         mae = mean_absolute_error(y_testovanie, predikcia)
         st.text(f'RMSE: {rmse} \nMAE: {mae}')
@@ -128,18 +146,18 @@ def predikcia():
         )
 
 def zobraz_spravy_v_sidebar():
-    st.sidebar.header('***Aktuálne Správy súvisiace s Menovým Trhom***:chart_with_upwards_trend:')
-    st.sidebar.markdown('---')
+    st.sidebar.header('Aktuálne Správy súvisiace s Menovým Trhom')
+    st.sidebar.write('Načítavam aktuálne správy z RSS kanálov...')
     # Použitie RSS feedu pre načítanie finančných správ z Investing.com - Forex News sekcia
     feed_url = 'https://www.investing.com/rss/news_1.rss'  # RSS kanál zameraný na Forex News od Investing.com
     feed = feedparser.parse(feed_url)
 
     if len(feed.entries) > 0:
-        for entry in feed.entries[:20]:  # Zobrazíme prvých 5 relevantných správ
+        for entry in feed.entries[:5]:  # Zobrazíme prvých 5 relevantných správ
             st.sidebar.subheader(entry.title)
             if hasattr(entry, 'summary'):
                 st.sidebar.write(entry.summary)
-            st.sidebar.write(f"[\u010c\u00edta\u0165 viac]({entry.link})")
+            st.sidebar.write(f"[Čítať viac]({entry.link})")
             st.sidebar.markdown('---')  # Pridanie oddeľovacej čiary medzi správami
     else:
         st.sidebar.write('Nenašli sa žiadne správy.')
