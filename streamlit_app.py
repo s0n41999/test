@@ -136,6 +136,11 @@ def predikcia():
         mae = mean_absolute_error(y_testovanie, predikcia)
         st.text(f'RMSE: {rmse} \nMAE: {mae}')
 
+        # Hodnotenie modelu na budúcich predikovaných hodnotách (rolling forecast evaluation)
+        future_rmse = np.sqrt(np.mean((y_testovanie[:pocet_dni] - predikcia_forecast) ** 2))
+        future_mae = mean_absolute_error(y_testovanie[:pocet_dni], predikcia_forecast)
+        st.text(f'RMSE (Future Rolling Forecast): {future_rmse} \nMAE (Future Rolling Forecast): {future_mae}')
+
         # Button to download prediction data with the correct delimiter
         csv = data_predicted.to_csv(index=False, sep=';', encoding='utf-8')
         st.download_button(
