@@ -130,14 +130,14 @@ def predikcia():
 
 def zobraz_spravy():
     st.header('Aktuálne Správy súvisiace s Menovým Trhom')
-    st.write('Načítavam aktuálne správy z RSS kanálov...')
     # Použitie RSS feedu pre načítanie finančných správ z Yahoo Finance
     feed_url = 'https://finance.yahoo.com/news/rssindex'  # RSS kanál Yahoo Finance
     feed = feedparser.parse(feed_url)
     if len(feed.entries) > 0:
         for entry in feed.entries[:5]:  # Zobrazíme prvých 5 správ
             st.subheader(entry.title)
-            st.write(entry.summary)
+            if hasattr(entry, 'summary'):
+                st.write(entry.summary)
             st.write(f"[Čítať viac]({entry.link})")
     else:
         st.write('Nenašli sa žiadne správy.')
