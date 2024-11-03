@@ -5,19 +5,19 @@ import yfinance as yf
 import datetime
 from datetime import date
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error  # Import MAPE
+from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error
+from sklearn.model_selection import TimeSeriesSplit
 import requests
 import feedparser
 
-#-----------------NASTAVENIA-----------------
+# -----------------NASTAVENIA-----------------
 
 st.set_page_config(layout="centered")
 
-#------------------------------------------
+# ------------------------------------------
 
 st.title('Predikcia časových radov vybraných valutových kurzov')
 
@@ -32,7 +32,7 @@ def stiahnut_data(user_input, start_date, end_date):
         df.columns = ['_'.join(col).strip() for col in df.columns.values]
     return df
 
-moznost = st.selectbox('Zadajte menový tiker', ['EURUSD=X','EURCHF=X', 'EURAUD=X','EURNZD=X', 'EURCAD=X', 'EURSEK=X', 'EURNOK=X', 'EURCZK=X'])
+moznost = st.selectbox('Zadajte menový tiker', ['EURUSD=X', 'EURCHF=X', 'EURAUD=X', 'EURNZD=X', 'EURCAD=X', 'EURSEK=X', 'EURNOK=X', 'EURCZK=X'])
 moznost = moznost.upper()
 dnes = datetime.date.today()
 start = dnes - datetime.timedelta(days=3650)
@@ -47,13 +47,12 @@ close_column = [col for col in data.columns if 'Close' in col]
 if close_column:
     data['Close'] = data[close_column[0]]
 
-
 st.write('Záverečný kurz')
 st.line_chart(data['Close'])
 st.header('Nedávne Dáta')
 st.dataframe(data.tail(20))
 
-# vypočet kĺzavého priemeru
+# výpočet kĺzavého priemeru
 st.header('Jednoduchý kĺzavý priemer za 50 dní')
 datama50 = data.copy()
 datama50['50ma'] = datama50['Close'].rolling(50).mean()
@@ -97,18 +96,30 @@ def predikcia():
         x = df.drop(['Close'], axis=1).values
         y = df['Close'].values
 
-        # Rozdelenie dát na tréning a testovanie
-        train_size = int(len(x) * 0.8)
-        x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
-        y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
+        # Použitie TimeSeriesSplit na delenie dát
+        tscv = TimeSeriesSplit(n_splits=5)
+        predikcie = []
+        skutocne_hodnoty = []
 
-        # Trénovanie modelu
-        algoritmus.fit(x_trenovanie, y_trenovanie)
+        for train_index, test_index in tscv.split(x):
+            x_trenovanie, x_testovanie = x[train_index], x[test_index]
+            y_trenovanie, y_testovanie = y[train_index], y[test_index]
 
-        # Predikcia na testovacej množine
-        predikcia = algoritmus.predict(x_testovanie)
+            # Trénovanie modelu
+            algoritmus.fit(x_trenovanie, y_trenovanie)
 
-        # Predikcia budúcich hodnôt 
+            # Predikcia na testovacej množine
+            predikcia = algoritmus.predict(x_testovanie)
+            predikcie.extend(predikcia)
+            skutocne_hodnoty.extend(y_testovanie)
+
+        # Hodnotenie modelu
+        rmse = np.sqrt(np.mean((np.array(skutocne_hodnoty) - np.array(predikcie)) ** 2))
+        mae = mean_absolute_error(skutocne_hodnoty, predikcie)
+        mape = mean_absolute_percentage_error(skutocne_hodnoty, predikcie) * 100
+        st.text(f'RMSE: {rmse} \nMAE: {mae} \nMAPE: {mape}%')
+
+        # Predikcia budúcich hodnôt
         posledne_data = x[-1].reshape(1, -1)
         predikcia_forecast = []
         
@@ -131,13 +142,7 @@ def predikcia():
 
         data_predicted = pd.DataFrame(predikovane_data)
 
-        # Hodnotenie modelu
-        rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
-        mae = mean_absolute_error(y_testovanie, predikcia)
-        mape = mean_absolute_percentage_error(y_testovanie, predikcia) * 100
-        st.text(f'RMSE: {rmse} \nMAE: {mae} \nMAPE: {mape}%')
-
-        # Stiahnutie dat ako cvs
+        # Stiahnutie dat ako csv
         csv = data_predicted.to_csv(index=False, sep=';', encoding='utf-8')
         st.download_button(
             label="Stiahnuť predikciu ako CSV",
