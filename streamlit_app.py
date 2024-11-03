@@ -146,7 +146,7 @@ def predikcia():
         )
 
 def zobraz_spravy_v_sidebar():
-    st.sidebar.header('Aktuálne Správy súvisiace s Menovým Trhom')
+    st.sidebar.header('Aktuálne Správy súvisiace s Menovým Trhom :chart_with_upwards_trend:')
     st.sidebar.write('Načítavam aktuálne správy z RSS kanálov...')
     # Použitie RSS feedu pre načítanie finančných správ z Investing.com - Forex News sekcia
     feed_url = 'https://www.investing.com/rss/news_1.rss'  # RSS kanál zameraný na Forex News od Investing.com
