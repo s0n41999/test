@@ -134,8 +134,7 @@ def predikcia():
         # Hodnotenie modelu
         rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
         mae = mean_absolute_error(y_testovanie, predikcia)
-        mape = mean_absolute_percentage_error(skutocne_hodnoty, predikcie) * 100
-        st.text(f'RMSE: {rmse} \nMAE: {mae} \nMAPE: {mape}%')
+        st.text(f'RMSE: {rmse} \nMAE: {mae}')
 
 
         # Stiahnutie dat ako cvs
