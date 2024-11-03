@@ -22,8 +22,7 @@ st.set_page_config(layout="centered")
 st.title('Predikcia časových radov vybraných valutových kurzov')
 
 def main():
-    if st.button('Zobraziť aktuálne správy'):  # Pridaný gombík pre zobrazenie správ
-        zobraz_spravy()
+    zobraz_spravy_v_sidebar()
     predikcia()
 
 def stiahnut_data(user_input, start_date, end_date):
@@ -128,22 +127,22 @@ def predikcia():
             mime='text/csv'
         )
 
-def zobraz_spravy():
-    st.header('Aktuálne Správy súvisiace s Menovým Trhom')
-    st.write('Načítavam aktuálne správy z RSS kanálov...')
+def zobraz_spravy_v_sidebar():
+    st.sidebar.header('Aktuálne Správy súvisiace s Menovým Trhom')
+    st.sidebar.write('Načítavam aktuálne správy z RSS kanálov...')
     # Použitie RSS feedu pre načítanie finančných správ z Investing.com - Forex News sekcia
     feed_url = 'https://www.investing.com/rss/news_1.rss'  # RSS kanál zameraný na Forex News od Investing.com
     feed = feedparser.parse(feed_url)
 
     if len(feed.entries) > 0:
         for entry in feed.entries[:5]:  # Zobrazíme prvých 5 relevantných správ
-            st.subheader(entry.title)
+            st.sidebar.subheader(entry.title)
             if hasattr(entry, 'summary'):
-                st.write(entry.summary)
-            st.write(f"[Čítať viac]({entry.link})")
-            st.markdown('---')  # Pridanie oddeľovacej čiary medzi správami
+                st.sidebar.write(entry.summary)
+            st.sidebar.write(f"[\u010c\u00edta\u0165 viac]({entry.link})")
+            st.sidebar.markdown('---')  # Pridanie oddeľovacej čiary medzi správami
     else:
-        st.write('Nenašli sa žiadne správy.')
+        st.sidebar.write('Nenašli sa žiadne správy.')
 
 if __name__ == '__main__':
     main()
