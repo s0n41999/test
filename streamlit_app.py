@@ -34,7 +34,7 @@ def stiahnut_data(user_input, start_date, end_date):
 
 moznost = st.selectbox('Zadajte menový tiker', ['EURUSD=X','EURCHF=X', 'EURAUD=X','EURNZD=X', 'EURCAD=X', 'EURSEK=X', 'EURNOK=X', 'EURCZK=X'])
 moznost = moznost.upper()
-dnes = datetime.date.today()
+dnes = datetime.date(2024, 10, 20)
 start = dnes - datetime.timedelta(days=3650)
 start_date = start
 end_date = dnes
@@ -117,7 +117,7 @@ def predikcia():
         # Výpočet chýb
         rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
         mae = mean_absolute_error(y_testovanie, predikcia)
-        st.text(f'RMSE pre predikciu {pocet_dni} dní dopredu: {rmse:.4f} \nMAE: {mae:.4f}')
+        st.text(f'RMSE pre predikciu {pocet_dni} dní dopredu: {rmse:.4f} \nMAE pre predikciu {pocet_dni} dní dopredu: {mae:.4f}')
 
         # Predikcia budúcich hodnôt 
         # Na predikciu budúcich hodnôt potrebujeme posledné lag hodnoty z dát
