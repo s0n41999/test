@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error  
+from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error  # Import MAPE
 import requests
 import feedparser
 
@@ -134,7 +134,8 @@ def predikcia():
         # Hodnotenie modelu
         rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
         mae = mean_absolute_error(y_testovanie, predikcia)
-        st.text(f'RMSE: {rmse} \nMAE: {mae}')
+        mape = mean_absolute_percentage_error(y_testovanie, predikcia) * 100
+        st.text(f'RMSE: {rmse} \nMAE: {mae} \nMAPE: {mape}%')
 
         # Stiahnutie dat ako cvs
         csv = data_predicted.to_csv(index=False, sep=';', encoding='utf-8')
