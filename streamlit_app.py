@@ -131,29 +131,16 @@ def predikcia():
 def zobraz_spravy():
     st.header('Aktuálne Správy súvisiace s Menovým Trhom')
     st.write('Načítavam aktuálne správy z RSS kanálov...')
-    # Použitie RSS feedu pre načítanie finančných správ z Yahoo Finance
-    feed_url = 'https://finance.yahoo.com/news/rssindex'  # RSS kanál Yahoo Finance
+    # Použitie RSS feedu pre načítanie finančných správ z Investing.com
+    feed_url = 'https://www.investing.com/rss/news_25.rss'  # RSS kanál zameraný na Forex od Investing.com
     feed = feedparser.parse(feed_url)
-    relevant_keywords = [
-        "forex", "currency", "exchange rate", "EUR", "USD", "CHF", "AUD", "NZD", "CAD", "SEK", "NOK", "CZK",
-        "EUR/USD", "EUR/CHF", "EUR/AUD", "EUR/NZD", "EUR/CAD", "EUR/SEK", "EUR/NOK", "EUR/CZK", "FX", "forex market"
-    ]
 
     if len(feed.entries) > 0:
-        filtered_entries = []
-        for entry in feed.entries:
-            # Skontroluj, či titulok obsahuje niektoré z kľúčových slov
-            if any(keyword.lower() in entry.title.lower() for keyword in relevant_keywords):
-                filtered_entries.append(entry)
-
-        if len(filtered_entries) > 0:
-            for entry in filtered_entries[:5]:  # Zobrazíme prvých 5 relevantných správ
-                st.subheader(entry.title)
-                if hasattr(entry, 'summary'):
-                    st.write(entry.summary)
-                st.write(f"[Čítať viac]({entry.link})")
-        else:
-            st.write('Nenašli sa žiadne správy súvisiace s menovými kurzami.')
+        for entry in feed.entries[:5]:  # Zobrazíme prvých 5 relevantných správ
+            st.subheader(entry.title)
+            if hasattr(entry, 'summary'):
+                st.write(entry.summary)
+            st.write(f"[Čítať viac]({entry.link})")
     else:
         st.write('Nenašli sa žiadne správy.')
 
