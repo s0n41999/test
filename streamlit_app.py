@@ -47,13 +47,13 @@ close_column = [col for col in data.columns if 'Close' in col]
 if close_column:
     data['Close'] = data[close_column[0]]
 
-# Plotting the data
+
 st.write('Záverečný kurz')
 st.line_chart(data['Close'])
 st.header('Nedávne Dáta')
 st.dataframe(data.tail(20))
 
-# Calculating and plotting moving averages
+# vypočet kĺzavého priemeru
 st.header('Jednoduchý kĺzavý priemer za 50 dní')
 datama50 = data.copy()
 datama50['50ma'] = datama50['Close'].rolling(50).mean()
@@ -97,7 +97,7 @@ def predikcia():
         x = df.drop(['Close'], axis=1).values
         y = df['Close'].values
 
-        # Rozdelenie dát na tréning a testovanie (na základe časového sledu)
+        # Rozdelenie dát na tréning a testovanie
         train_size = int(len(x) * 0.8)
         x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
         y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
@@ -108,7 +108,7 @@ def predikcia():
         # Predikcia na testovacej množine
         predikcia = algoritmus.predict(x_testovanie)
 
-        # Predikcia budúcich hodnôt (na základe posledných známych hodnôt)
+        # Predikcia budúcich hodnôt 
         posledne_data = x[-1].reshape(1, -1)
         predikcia_forecast = []
         
@@ -136,12 +136,7 @@ def predikcia():
         mae = mean_absolute_error(y_testovanie, predikcia)
         st.text(f'RMSE: {rmse} \nMAE: {mae}')
 
-        # Hodnotenie modelu na budúcich predikovaných hodnotách (rolling forecast evaluation)
-        future_rmse = np.sqrt(np.mean((y_testovanie[:pocet_dni] - predikcia_forecast) ** 2))
-        future_mae = mean_absolute_error(y_testovanie[:pocet_dni], predikcia_forecast)
-        st.text(f'RMSE (Future Rolling Forecast): {future_rmse} \nMAE (Future Rolling Forecast): {future_mae}')
-
-        # Button to download prediction data with the correct delimiter
+        # Stiahnutie dat ako cvs
         csv = data_predicted.to_csv(index=False, sep=';', encoding='utf-8')
         st.download_button(
             label="Stiahnuť predikciu ako CSV",
