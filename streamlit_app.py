@@ -141,7 +141,7 @@ def predikcia():
         st.download_button(
             label="Stiahnuť predikciu ako CSV",
             data=csv,
-            file_name='predikcia.csv',
+            file_name=f'predikcia_{moznost}.csv',
             mime='text/csv'
         )
 
@@ -153,7 +153,7 @@ def zobraz_spravy_v_sidebar():
     feed = feedparser.parse(feed_url)
 
     if len(feed.entries) > 0:
-        for entry in feed.entries[:5]:  # Zobrazíme prvých 5 relevantných správ
+        for entry in feed.entries[:15]: 
             st.sidebar.subheader(entry.title)
             if hasattr(entry, 'summary'):
                 st.sidebar.write(entry.summary)
