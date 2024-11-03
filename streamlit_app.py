@@ -131,8 +131,8 @@ def predikcia():
 def zobraz_spravy():
     st.header('Aktuálne Správy súvisiace s Menovým Trhom')
     st.write('Načítavam aktuálne správy z RSS kanálov...')
-    # Použitie RSS feedu pre načítanie finančných správ z Investing.com - Currencies sekcia
-    feed_url = 'https://www.investing.com/rss/news_301.rss'  # RSS kanál zameraný na Currencies od Investing.com
+    # Použitie RSS feedu pre načítanie finančných správ z Investing.com - Forex News sekcia
+    feed_url = 'https://www.investing.com/rss/news_1.rss'  # RSS kanál zameraný na Forex News od Investing.com
     feed = feedparser.parse(feed_url)
 
     if len(feed.entries) > 0:
