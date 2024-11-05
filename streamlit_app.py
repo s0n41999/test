@@ -114,7 +114,7 @@ def predikcia():
         predikovane_data = []
         col1, col2 = st.columns(2)
         
-         den = 1
+        den = 1
         predikovane_data = []
         for i in predikcia_forecast:
             aktualny_datum = dnes + datetime.timedelta(days=den)
