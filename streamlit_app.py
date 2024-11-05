@@ -5,7 +5,6 @@ import yfinance as yf
 import datetime
 from datetime import date
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
@@ -42,18 +41,18 @@ end_date = dnes
 data = stiahnut_data(moznost, start_date, end_date)
 scaler = StandardScaler()
 
-# Ensure the 'Close' column is accessible even if multi-indexed
+
 close_column = [col for col in data.columns if 'Close' in col]
 if close_column:
     data['Close'] = data[close_column[0]]
 
-# Plotting the data
+
 st.write('Záverečný kurz')
 st.line_chart(data['Close'])
 st.header('Nedávne Dáta')
 st.dataframe(data.tail(20))
 
-# Calculating and plotting moving averages
+
 st.header('Jednoduchý kĺzavý priemer za 50 dní')
 datama50 = data.copy()
 datama50['50ma'] = datama50['Close'].rolling(50).mean()
@@ -64,7 +63,7 @@ datama200 = data.copy()
 datama200['200ma'] = datama200['Close'].rolling(200).mean()
 st.line_chart(datama200[['200ma', 'Close']])
 
-# Merging 50ma and 200ma data for combined chart
+
 spojene_data = pd.concat([datama200[['200ma', 'Close']], datama50[['50ma']]], axis=1)
 
 st.header('Jednoduchý kĺzavý priemer za 50 dní a 200 dní')
@@ -78,20 +77,20 @@ def dataframe():
 
 
 def predikcia():
-    # Model selection and days input directly in vykonat_model
-    model_name = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
+    
+    vyber_model = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
     pocet_dni = int(st.number_input('Koľko dní chcete predpovedať?', value=5))
 
-    if model_name == 'Lineárna Regresia':
-        model = LinearRegression()
-    elif model_name == 'Regresor náhodného lesa':
-        model = RandomForestRegressor()
-    elif model_name == 'Regresor K najbližších susedov':
-        model = KNeighborsRegressor()
+    if vyber_model == 'Lineárna Regresia':
+        algoritmus = LinearRegression()
+    elif vyber_model == 'Regresor náhodného lesa':
+         algoritmus = RandomForestRegressor()
+    elif vyber_model == 'Regresor K najbližších susedov':
+         algoritmus = KNeighborsRegressor()
 
-    # Proceed only if 'Predikovať' button is clicked
+    
     if st.button('Predikovať'):
-       # Vyberáme iba hodnoty zatváracej ceny
+         # Vyberáme iba hodnoty zatváracej ceny
         data_ceny = data[['Close']]
 
         # Posúvame zatváracie ceny o stanovený počet dní na predikciu
@@ -116,8 +115,8 @@ def predikcia():
         y_trenovanie, y_testovanie = y_trening[:train_size], y_trening[train_size:]
         
         # Trénovanie modelu
-        algoritmus.fit(x_trenovanie, y_trenovanie)
-        predikcia = algoritmus.predict(x_testovanie)
+        algoritmus.fit(x_trenovanie, y_trenovanie)  # Použitie 'algoritmus' na trénovanie
+        predikcia = algoritmus.predict(x_testovanie)  # Predikcia s použitím 'algoritmus'
         
         # Predikcia na základe počtu dní
         predikcia_forecast = algoritmus.predict(x_predikcia)
@@ -147,7 +146,6 @@ def predikcia():
             file_name='predikcia.csv',
             mime='text/csv'
         )
-
 
 def zobraz_spravy_v_sidebar():
     st.sidebar.header('Aktuálne Správy súvisiace s Menovým Trhom :chart_with_upwards_trend:')
