@@ -9,9 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error 
-from xgboost import XGBRegressor
-from sklearn.ensemble import ExtraTreesRegressor
+from sklearn.metrics import mean_absolute_error  
 #-----------------NASTAVENIA-----------------
 
 st.set_page_config(layout="centered")
@@ -90,13 +88,6 @@ def predikcia():
         elif model == 'Regresor K najbližších susedov':
             algoritmus = KNeighborsRegressor()
             vykonat_model(algoritmus, pocet_dni)
-        elif model == 'ExtraTreesRegressor':
-            algoritmus = ExtraTreesRegressor()
-            model_engine(algoritmus, num)
-        else:
-            algoritmus = XGBRegressor()
-            model_engine(algoritmus, num)
-
 
 
 
