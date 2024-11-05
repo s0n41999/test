@@ -9,7 +9,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error  
+from sklearn.metrics import mean_absolute_error
+import requests
+import feedparser
 #-----------------NASTAVENIA-----------------
 
 st.set_page_config(layout="centered")
