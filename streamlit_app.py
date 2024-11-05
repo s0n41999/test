@@ -20,6 +20,7 @@ st.set_page_config(layout="centered")
 st.title('Predikcia časových radov vybraných valutových kurzov')
 
 def main():
+    zobraz_spravy_v_sidebar()
     predikcia()
 
 def stiahnut_data(user_input, start_date, end_date):
@@ -29,7 +30,7 @@ def stiahnut_data(user_input, start_date, end_date):
         df.columns = ['_'.join(col).strip() for col in df.columns.values]
     return df
 
-moznost = st.selectbox('Zadajte menový tiker', ['EURUSD=X','EURCHF=X', 'EURAUD=X','EURNZD=X', 'EURCAD=X', 'EURSEK=X', 'EURNOK=X', 'EURCZK=X'])
+moznost = st.selectbox('Zadajte menový tiker', ['EURUSD=X','EURCHF=X', 'EURAUD=X','EURNZD=X', 'EURCAD=X', 'EURSEK=X', 'EURCZK=X'])
 moznost = moznost.upper()
 dnes = datetime.date.today()
 start = dnes - datetime.timedelta(days=3650)
@@ -113,21 +114,47 @@ def predikcia():
         predikovane_data = []
         col1, col2 = st.columns(2)
         
-        with col1:
-            for i in predikcia_forecast:
-                aktualny_datum = dnes + datetime.timedelta(days=den)
-                st.text(f'Deň {den}: {i}')
-                predikovane_data.append({'Deň': aktualny_datum, 'Predikcia': i})
-                den += 1
+         den = 1
+        predikovane_data = []
+        for i in predikcia_forecast:
+            aktualny_datum = dnes + datetime.timedelta(days=den)
+            st.text(f'{aktualny_datum.strftime("%d. %B %Y")}: {i}')
+            predikovane_data.append({'datum': aktualny_datum, 'predikcia': i})
+            den += 1
 
-        with col2:
-            data_predicted = pd.DataFrame(predikovane_data)
-            st.dataframe(data_predicted)
+        data_predicted = pd.DataFrame(predikovane_data)
+
         
         # Displaying RMSE and MAE
         rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
         st.text(f'RMSE: {rmse} \
                 \nMAE: {mean_absolute_error(y_testovanie, predikcia)}')
+         # Stiahnutie dat ako cvs
+        csv = data_predicted.to_csv(index=False, sep=';', encoding='utf-8')
+        st.download_button(
+            label="Stiahnuť predikciu ako CSV",
+            data=csv,
+            file_name=f'predikcia_{moznost}.csv',
+            mime='text/csv'
+        )
+
+def zobraz_spravy_v_sidebar():
+    st.sidebar.header('Aktuálne Správy súvisiace s Menovým Trhom :chart_with_upwards_trend:')
+    st.sidebar.markdown('---')
+    # Použitie RSS feedu pre načítanie finančných správ z Investing.com - Forex News sekcia
+    feed_url = 'https://www.investing.com/rss/news_1.rss'  # RSS kanál zameraný na Forex News od Investing.com
+    feed = feedparser.parse(feed_url)
+
+    if len(feed.entries) > 0:
+        for entry in feed.entries[:15]: 
+            st.sidebar.subheader(entry.title)
+            if hasattr(entry, 'summary'):
+                st.sidebar.write(entry.summary)
+            st.sidebar.write(f"[Čítať viac]({entry.link})")
+            st.sidebar.markdown('---')  # Pridanie oddeľovacej čiary medzi správami
+    else:
+        st.sidebar.write('Nenašli sa žiadne správy.')
+
 
 if __name__ == '__main__':
     main()
