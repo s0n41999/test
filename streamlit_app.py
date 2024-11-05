@@ -91,52 +91,63 @@ def predikcia():
 
     # Proceed only if 'Predikovať' button is clicked
     if st.button('Predikovať'):
-        df = data[['Close']]
-        df['predikcia'] = data.Close.shift(-pocet_dni)
-        x = df.drop(['predikcia'], axis=1).values
-        x = scaler.fit_transform(x)
-        x_predikcia = x[-pocet_dni:]
-        x = x[:-pocet_dni]
-        y = df.predikcia.values
-        y = y[:-pocet_dni]
+       # Vyberáme iba hodnoty zatváracej ceny
+        data_ceny = data[['Close']]
 
-        # Splitting data
-        train_size = int(len(x) * 0.8)
-        x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
-        y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
+        # Posúvame zatváracie ceny o stanovený počet dní na predikciu
+        data_ceny['predikcia'] = data['Close'].shift(-pocet_dni)
+
+        # Normalizujeme dáta pre model
+        x_vstup = data_ceny.drop(columns=['predikcia']).values
+        x_vstup = scaler.fit_transform(x_vstup)
+
+        # Uchovávame posledných 'pocet_dni' na predikciu
+        x_predikcia = x_vstup[-pocet_dni:]
         
-        # Training the model
-        model.fit(x_trenovanie, y_trenovanie)
-        predikcia = model.predict(x_testovanie)
+        # Získavame hodnoty vstupných dát pre tréning
+        x_trening = x_vstup[:-pocet_dni]
         
-        # Predicting based on the number of days
-        predikcia_forecast = model.predict(x_predikcia)
-        den = 1
-        predikovane_data = []
+        # Extrahujeme predikčné hodnoty a obmedzíme na tréningovú množinu
+        y_trening = data_ceny['predikcia'].values[:-pocet_dni]
         
+        # Rozdelenie dát na tréningovú a testovaciu množinu
+        train_size = int(len(x_trening) * 0.8)
+        x_trenovanie, x_testovanie = x_trening[:train_size], x_trening[train_size:]
+        y_trenovanie, y_testovanie = y_trening[:train_size], y_trening[train_size:]
+        
+        # Trénovanie modelu
+        algoritmus.fit(x_trenovanie, y_trenovanie)
+        predikcia = algoritmus.predict(x_testovanie)
+        
+        # Predikcia na základe počtu dní
+        predikcia_forecast = algoritmus.predict(x_predikcia)
+        
+        # Výpočet predikcie pre nasledujúce dni
         den = 1
         predikovane_data = []
         for i in predikcia_forecast:
             aktualny_datum = dnes + datetime.timedelta(days=den)
-            st.text(f'{aktualny_datum.strftime("%d. %B %Y")}: {i}')
+            st.text(f'Deň {den}: {i}')
             predikovane_data.append({'datum': aktualny_datum, 'predikcia': i})
             den += 1
-
-        data_predicted = pd.DataFrame(predikovane_data)
-
         
-        # Displaying RMSE and MAE
+        # Vytvorenie DataFrame s predikovanými dátami
+        data_predicted = pd.DataFrame(predikovane_data)
+        
+        # Výpočet metriky chýb
         rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
-        st.text(f'RMSE: {rmse} \
-                \nMAE: {mean_absolute_error(y_testovanie, predikcia)}')
-         # Stiahnutie dat ako cvs
+        mae = mean_absolute_error(y_testovanie, predikcia)
+        st.text(f'RMSE: {rmse} \nMAE: {mae}')
+        
+        # Tlačidlo na stiahnutie dát s korektným delimitérom
         csv = data_predicted.to_csv(index=False, sep=';', encoding='utf-8')
         st.download_button(
             label="Stiahnuť predikciu ako CSV",
             data=csv,
-            file_name=f'predikcia_{moznost}.csv',
+            file_name='predikcia.csv',
             mime='text/csv'
         )
+
 
 def zobraz_spravy_v_sidebar():
     st.sidebar.header('Aktuálne Správy súvisiace s Menovým Trhom :chart_with_upwards_trend:')
