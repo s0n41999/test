@@ -8,10 +8,12 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error  
+from sklearn.ensemble import RandomForestRegressor 
 import requests
 import feedparser
+from xgboost import XGBRegressor
+from sklearn.ensemble import ExtraTreesRegressor
+from sklearn.metrics import r2_score, mean_absolute_error
 
 #-----------------NASTAVENIA-----------------
 
@@ -70,87 +72,58 @@ spojene_data = pd.concat([datama200[['200ma', 'Close']], datama50[['50ma']]], ax
 st.header('Jednoduchý kĺzavý priemer za 50 dní a 200 dní')
 st.line_chart(spojene_data)
 
-def predikcia():
-    model_options = {
-        'Lineárna Regresia': LinearRegression(),
-        'Regresor náhodného lesa': RandomForestRegressor(),
-        'Regresor K najbližších susedov': KNeighborsRegressor()
-    }
-    
-    model = st.selectbox('Vyberte model', list(model_options.keys()))
-    pocet_dni = st.number_input('Koľko dní chcete predpovedať?', value=5)
-    pocet_dni = int(pocet_dni)
-    
-    if st.button('Predikovať'):
-        algoritmus = model_options.get(model)
-
-        # Príprava dát pre "lagged" predikciu
-        df = data[['Close']].copy()
-        
-        # Pridáme oneskorené hodnoty (lag features) ako prediktory
-        max_lag = pocet_dni
-        for lag in range(1, max_lag + 1):
-            df[f'lag_{lag}'] = df['Close'].shift(lag)
-
-        df.dropna(inplace=True)
-
-        # Vytvorenie vstupných a výstupných hodnôt
-        x = df.drop(['Close'], axis=1).values
-        y = df['Close'].values
-
-        # Rozdelenie dát na tréning a testovanie podľa počtu dní
-        if len(df) > pocet_dni:
-            x_trenovanie = x[:-pocet_dni]
-            y_trenovanie = y[:-pocet_dni]
-            x_testovanie = x[-pocet_dni:]
-            y_testovanie = y[-pocet_dni:]
+def predict():
+    model = st.radio('Choose a model', ['LinearRegression', 'RandomForestRegressor', 'ExtraTreesRegressor', 'KNeighborsRegressor', 'XGBoostRegressor'])
+    num = st.number_input('How many days forecast?', value=5)
+    num = int(num)
+    if st.button('Predict'):
+        if model == 'LinearRegression':
+            engine = LinearRegression()
+            model_engine(engine, num)
+        elif model == 'RandomForestRegressor':
+            engine = RandomForestRegressor()
+            model_engine(engine, num)
+        elif model == 'ExtraTreesRegressor':
+            engine = ExtraTreesRegressor()
+            model_engine(engine, num)
+        elif model == 'KNeighborsRegressor':
+            engine = KNeighborsRegressor()
+            model_engine(engine, num)
         else:
-            st.error('Nedostatok dát na testovanie.')
-            return
+            engine = XGBRegressor()
+            model_engine(engine, num)
 
-        # Trénovanie modelu
-        algoritmus.fit(x_trenovanie, y_trenovanie)
 
-        # Predikcia na testovacej množine
-        predikcia = algoritmus.predict(x_testovanie)
+def model_engine(model, num):
+    # getting only the closing price
+    df = data[['Close']]
+    # shifting the closing price based on number of days forecast
+    df['preds'] = data.Close.shift(-num)
+    # scaling the data
+    x = df.drop(['preds'], axis=1).values
+    x = scaler.fit_transform(x)
+    # storing the last num_days data
+    x_forecast = x[-num:]
+    # selecting the required values for training
+    x = x[:-num]
+    # getting the preds column
+    y = df.preds.values
+    # selecting the required values for training
+    y = y[:-num]
 
-        # Výpočet chýb
-        rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
-        mae = mean_absolute_error(y_testovanie, predikcia)
-        st.text(f'RMSE pre predikciu {pocet_dni} dní dopredu: {rmse:.4f} \nMAE pre predikciu {pocet_dni} dní dopredu: {mae:.4f}')
-
-        # Predikcia budúcich hodnôt 
-        # Na predikciu budúcich hodnôt potrebujeme posledné lag hodnoty z dát
-        posledne_lag_hodnoty = df.drop(['Close'], axis=1).values[-1].reshape(1, -1)
-        predikcia_forecast = []
-        
-        for _ in range(pocet_dni):
-            buduca_hodnota = algoritmus.predict(posledne_lag_hodnoty)[0]
-            predikcia_forecast.append(buduca_hodnota)
-            
-            # Aktualizujeme lag hodnoty pre ďalšiu predikciu
-            posledne_lag_hodnoty = np.roll(posledne_lag_hodnoty, -1)
-            posledne_lag_hodnoty[0, -1] = buduca_hodnota
-
-        # Výpis predikcií
-        den = 1
-        predikovane_data = []
-        for i in predikcia_forecast:
-            aktualny_datum = dnes + datetime.timedelta(days=den)
-            st.text(f'{aktualny_datum.strftime("%d. %B %Y")}: {i:.4f}')
-            predikovane_data.append({'datum': aktualny_datum, 'predikcia': i})
-            den += 1
-
-        data_predicted = pd.DataFrame(predikovane_data)
-
-        # Stiahnutie dat ako CSV
-        csv = data_predicted.to_csv(index=False, sep=';', encoding='utf-8')
-        st.download_button(
-            label="Stiahnuť predikciu ako CSV",
-            data=csv,
-            file_name=f'predikcia_{moznost}.csv',
-            mime='text/csv'
-        )
+    #spliting the data
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=.2, random_state=7)
+    # training the model
+    model.fit(x_train, y_train)
+    preds = model.predict(x_test)
+    st.text(f'r2_score: {r2_score(y_test, preds)} \
+            \nMAE: {mean_absolute_error(y_test, preds)}')
+    # predicting stock price based on the number of days
+    forecast_pred = model.predict(x_forecast)
+    day = 1
+    for i in forecast_pred:
+        st.text(f'Day {day}: {i}')
+        day += 1
 
 def zobraz_spravy_v_sidebar():
     st.sidebar.header('Aktuálne Správy súvisiace s Menovým Trhom :chart_with_upwards_trend:')
