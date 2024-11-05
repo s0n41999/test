@@ -1,4 +1,4 @@
-import streamlit as st 
+import streamlit as st
 import pandas as pd
 import numpy as np
 import yfinance as yf
@@ -8,24 +8,21 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
-from sklearn.ensemble import RandomForestRegressor 
-import requests
-import feedparser
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error 
 from xgboost import XGBRegressor
 from sklearn.ensemble import ExtraTreesRegressor
-from sklearn.metrics import r2_score, mean_absolute_error
-
 #-----------------NASTAVENIA-----------------
 
 st.set_page_config(layout="centered")
+
 
 #------------------------------------------
 
 st.title('Predikcia časových radov vybraných valutových kurzov')
 
 def main():
-    zobraz_spravy_v_sidebar()
-    predict()
+    predikcia()
 
 def stiahnut_data(user_input, start_date, end_date):
     df = yf.download(user_input, start=start_date, end=end_date, progress=False)
@@ -36,7 +33,7 @@ def stiahnut_data(user_input, start_date, end_date):
 
 moznost = st.selectbox('Zadajte menový tiker', ['EURUSD=X','EURCHF=X', 'EURAUD=X','EURNZD=X', 'EURCAD=X', 'EURSEK=X', 'EURNOK=X', 'EURCZK=X'])
 moznost = moznost.upper()
-dnes = datetime.date(2024, 10, 20)
+dnes = datetime.date.today()
 start = dnes - datetime.timedelta(days=3650)
 start_date = start
 end_date = dnes
@@ -49,13 +46,13 @@ close_column = [col for col in data.columns if 'Close' in col]
 if close_column:
     data['Close'] = data[close_column[0]]
 
-
+# Plotting the data
 st.write('Záverečný kurz')
 st.line_chart(data['Close'])
 st.header('Nedávne Dáta')
 st.dataframe(data.tail(20))
 
-# vypočet kĺzavého priemeru
+# Calculating and plotting moving averages
 st.header('Jednoduchý kĺzavý priemer za 50 dní')
 datama50 = data.copy()
 datama50['50ma'] = datama50['Close'].rolling(50).mean()
@@ -72,75 +69,77 @@ spojene_data = pd.concat([datama200[['200ma', 'Close']], datama50[['50ma']]], ax
 st.header('Jednoduchý kĺzavý priemer za 50 dní a 200 dní')
 st.line_chart(spojene_data)
 
-def predict():
-    model = st.radio('Choose a model', ['LinearRegression', 'RandomForestRegressor', 'ExtraTreesRegressor', 'KNeighborsRegressor', 'XGBoostRegressor'])
-    num = st.number_input('How many days forecast?', value=5)
-    num = int(num)
-    if st.button('Predict'):
-        if model == 'LinearRegression':
-            engine = LinearRegression()
-            model_engine(engine, num)
-        elif model == 'RandomForestRegressor':
-            engine = RandomForestRegressor()
-            model_engine(engine, num)
+
+def dataframe():
+    st.header('Nedávne dáta')
+    st.dataframe(data.tail(10))
+
+
+
+def predikcia():
+    model = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
+    pocet_dni = st.number_input('Koľko dní chcete predpovedať?', value=5)
+    pocet_dni = int(pocet_dni)
+    if st.button('Predikovať'):
+        if model == 'Lineárna Regresia':
+            algoritmus = LinearRegression()
+            vykonat_model(algoritmus, pocet_dni)
+        elif model == 'Regresor náhodného lesa':
+            algoritmus = RandomForestRegressor()
+            vykonat_model(algoritmus, pocet_dni)
+        elif model == 'Regresor K najbližších susedov':
+            algoritmus = KNeighborsRegressor()
+            vykonat_model(algoritmus, pocet_dni)
         elif model == 'ExtraTreesRegressor':
-            engine = ExtraTreesRegressor()
-            model_engine(engine, num)
-        elif model == 'KNeighborsRegressor':
-            engine = KNeighborsRegressor()
-            model_engine(engine, num)
+            algoritmus = ExtraTreesRegressor()
+            model_engine(algoritmus, num)
         else:
-            engine = XGBRegressor()
-            model_engine(engine, num)
+            algoritmus = XGBRegressor()
+            model_engine(algoritmus, num)
 
 
-def model_engine(model, num):
-    # getting only the closing price
+
+
+def vykonat_model(model, pocet_dni): 
     df = data[['Close']]
-    # shifting the closing price based on number of days forecast
-    df['preds'] = data.Close.shift(-num)
-    # scaling the data
-    x = df.drop(['preds'], axis=1).values
+    df['predikcia'] = data.Close.shift(-pocet_dni)
+    x = df.drop(['predikcia'], axis=1).values
     x = scaler.fit_transform(x)
-    # storing the last num_days data
-    x_forecast = x[-num:]
-    # selecting the required values for training
-    x = x[:-num]
-    # getting the preds column
-    y = df.preds.values
-    # selecting the required values for training
-    y = y[:-num]
+    x_predikcia = x[-pocet_dni:]
+    x = x[:-pocet_dni]
+    y = df.predikcia.values
+    y = y[:-pocet_dni]
 
-    #spliting the data
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=.2, random_state=7)
-    # training the model
-    model.fit(x_train, y_train)
-    preds = model.predict(x_test)
-    st.text(f'r2_score: {r2_score(y_test, preds)} \
-            \nMAE: {mean_absolute_error(y_test, preds)}')
-    # predicting stock price based on the number of days
-    forecast_pred = model.predict(x_forecast)
-    day = 1
-    for i in forecast_pred:
-        st.text(f'Day {day}: {i}')
-        day += 1
+    #rozdelenie dát
+    x_trenovanie, x_testovanie, y_trenovanie, y_testovanie = train_test_split(x, y, test_size=.2, random_state=7)
+    train_size = int(len(x) * 0.8)
+    x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
+    y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
+    # trénovanie modelu
+    model.fit(x_trenovanie, y_trenovanie)
+    predikcia = model.predict(x_testovanie)
 
-def zobraz_spravy_v_sidebar():
-    st.sidebar.header('Aktuálne Správy súvisiace s Menovým Trhom :chart_with_upwards_trend:')
-    st.sidebar.markdown('---')
-    # Použitie RSS feedu pre načítanie finančných správ z Investing.com - Forex News sekcia
-    feed_url = 'https://www.investing.com/rss/news_1.rss'  # RSS kanál zameraný na Forex News od Investing.com
-    feed = feedparser.parse(feed_url)
+    # predikcia na základe počtu dní
+    predikcia_forecast = model.predict(x_predikcia)
+    den = 1
+    predikovane_data = []
+    col1, col2 = st.columns(2)
 
-    if len(feed.entries) > 0:
-        for entry in feed.entries[:15]: 
-            st.sidebar.subheader(entry.title)
-            if hasattr(entry, 'summary'):
-                st.sidebar.write(entry.summary)
-            st.sidebar.write(f"[Čítať viac]({entry.link})")
-            st.sidebar.markdown('---')  # Pridanie oddeľovacej čiary medzi správami
-    else:
-        st.sidebar.write('Nenašli sa žiadne správy.')
+    with col1:
+        for i in predikcia_forecast:
+            aktualny_datum = dnes + datetime.timedelta(days=den)
+            st.text(f'Deň {den}: {i}')
+            predikovane_data.append({'Deň': aktualny_datum, 'Predikcia': i})
+            den += 1
+
+    with col2:
+         data_predicted = pd.DataFrame(predikovane_data)
+         st.dataframe(data_predicted)
+
+    rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
+    st.text(f'RMSE: {rmse} \
+            \nMAE: {mean_absolute_error(y_testovanie, predikcia)}')
+
 
 if __name__ == '__main__':
     main()
