@@ -25,7 +25,7 @@ st.title('Predikcia časových radov vybraných valutových kurzov')
 
 def main():
     zobraz_spravy_v_sidebar()
-    predikcia()
+    predict()
 
 def stiahnut_data(user_input, start_date, end_date):
     df = yf.download(user_input, start=start_date, end=end_date, progress=False)
