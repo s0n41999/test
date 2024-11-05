@@ -75,62 +75,59 @@ def dataframe():
 
 
 def predikcia():
-    model = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
-    pocet_dni = st.number_input('Koľko dní chcete predpovedať?', value=5)
-    pocet_dni = int(pocet_dni)
+    # Model selection and days input directly in vykonat_model
+    model_name = st.selectbox('Vyberte model', ['Lineárna Regresia', 'Regresor náhodného lesa', 'Regresor K najbližších susedov'])
+    pocet_dni = int(st.number_input('Koľko dní chcete predpovedať?', value=5))
+
+    if model_name == 'Lineárna Regresia':
+        model = LinearRegression()
+    elif model_name == 'Regresor náhodného lesa':
+        model = RandomForestRegressor()
+    elif model_name == 'Regresor K najbližších susedov':
+        model = KNeighborsRegressor()
+
+    # Proceed only if 'Predikovať' button is clicked
     if st.button('Predikovať'):
-        if model == 'Lineárna Regresia':
-            algoritmus = LinearRegression()
-            vykonat_model(algoritmus, pocet_dni)
-        elif model == 'Regresor náhodného lesa':
-            algoritmus = RandomForestRegressor()
-            vykonat_model(algoritmus, pocet_dni)
-        elif model == 'Regresor K najbližších susedov':
-            algoritmus = KNeighborsRegressor()
-            vykonat_model(algoritmus, pocet_dni)
+        df = data[['Close']]
+        df['predikcia'] = data.Close.shift(-pocet_dni)
+        x = df.drop(['predikcia'], axis=1).values
+        x = scaler.fit_transform(x)
+        x_predikcia = x[-pocet_dni:]
+        x = x[:-pocet_dni]
+        y = df.predikcia.values
+        y = y[:-pocet_dni]
 
+        # Splitting data
+        x_trenovanie, x_testovanie, y_trenovanie, y_testovanie = train_test_split(x, y, test_size=.2, random_state=7)
+        train_size = int(len(x) * 0.8)
+        x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
+        y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
+        
+        # Training the model
+        model.fit(x_trenovanie, y_trenovanie)
+        predikcia = model.predict(x_testovanie)
+        
+        # Predicting based on the number of days
+        predikcia_forecast = model.predict(x_predikcia)
+        den = 1
+        predikovane_data = []
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            for i in predikcia_forecast:
+                aktualny_datum = dnes + datetime.timedelta(days=den)
+                st.text(f'Deň {den}: {i}')
+                predikovane_data.append({'Deň': aktualny_datum, 'Predikcia': i})
+                den += 1
 
-
-def vykonat_model(model, pocet_dni): 
-    df = data[['Close']]
-    df['predikcia'] = data.Close.shift(-pocet_dni)
-    x = df.drop(['predikcia'], axis=1).values
-    x = scaler.fit_transform(x)
-    x_predikcia = x[-pocet_dni:]
-    x = x[:-pocet_dni]
-    y = df.predikcia.values
-    y = y[:-pocet_dni]
-
-    #rozdelenie dát
-    x_trenovanie, x_testovanie, y_trenovanie, y_testovanie = train_test_split(x, y, test_size=.2, random_state=7)
-    train_size = int(len(x) * 0.8)
-    x_trenovanie, x_testovanie = x[:train_size], x[train_size:]
-    y_trenovanie, y_testovanie = y[:train_size], y[train_size:]
-    # trénovanie modelu
-    model.fit(x_trenovanie, y_trenovanie)
-    predikcia = model.predict(x_testovanie)
-
-    # predikcia na základe počtu dní
-    predikcia_forecast = model.predict(x_predikcia)
-    den = 1
-    predikovane_data = []
-    col1, col2 = st.columns(2)
-
-    with col1:
-        for i in predikcia_forecast:
-            aktualny_datum = dnes + datetime.timedelta(days=den)
-            st.text(f'Deň {den}: {i}')
-            predikovane_data.append({'Deň': aktualny_datum, 'Predikcia': i})
-            den += 1
-
-    with col2:
-         data_predicted = pd.DataFrame(predikovane_data)
-         st.dataframe(data_predicted)
-
-    rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
-    st.text(f'RMSE: {rmse} \
-            \nMAE: {mean_absolute_error(y_testovanie, predikcia)}')
-
+        with col2:
+            data_predicted = pd.DataFrame(predikovane_data)
+            st.dataframe(data_predicted)
+        
+        # Displaying RMSE and MAE
+        rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
+        st.text(f'RMSE: {rmse} \
+                \nMAE: {mean_absolute_error(y_testovanie, predikcia)}')
 
 if __name__ == '__main__':
     main()
