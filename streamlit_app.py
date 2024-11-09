@@ -33,7 +33,7 @@ def stiahnut_data(user_input, start_date, end_date):
 
 moznost = st.selectbox('Zadajte menový tiker', ['EURUSD=X','EURCHF=X', 'EURAUD=X','EURNZD=X', 'EURCAD=X', 'EURSEK=X', 'EURCZK=X'])
 moznost = moznost.upper()
-dnes = datetime.date.today()
+dnes = datetime.date(2024, 10, 1)
 start = dnes - datetime.timedelta(days=3650)
 start_date = start
 end_date = dnes
@@ -137,13 +137,16 @@ def predikcia():
         rmse = np.sqrt(np.mean((y_testovanie - predikcia) ** 2))
         mae = mean_absolute_error(y_testovanie, predikcia)
         st.text(f'RMSE: {rmse} \nMAE: {mae}')
+
+        nazov_modelu = vyber_model.replace(' ', '_')  # Pre názov súboru odstránime medzery
+        nazov_suboru = f'predikcia_{moznost}_{nazov_modelu}.csv'
         
         # Tlačidlo na stiahnutie dát s korektným delimitérom
         csv = data_predicted.to_csv(index=False, sep=';', encoding='utf-8')
         st.download_button(
             label="Stiahnuť predikciu ako CSV",
             data=csv,
-            file_name='predikcia.csv',
+            file_name=nazov_suboru,
             mime='text/csv'
         )
 
