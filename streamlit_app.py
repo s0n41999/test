@@ -126,7 +126,7 @@ def predikcia():
         predikovane_data = []
         for i in predikcia_forecast:
             aktualny_datum = dnes + datetime.timedelta(days=den)
-            st.text(f'Deň {aktualny_datum}: {i}')
+            st.text(f'{aktualny_datum}: {i}')
             predikovane_data.append({'datum': aktualny_datum, 'predikcia': i})
             den += 1
         
